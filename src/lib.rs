@@ -199,15 +199,14 @@ impl Board {
     fn get_possible_rook_moves(&self, piece: Piece, idx: usize) -> MoveList {
         let mut result = MoveList::new();
         let (row, col) = Board::index_to_coordinates(idx);
-        self.get_straight_moves(&mut result, piece, row, col);
+        let directions = [(1, 0), (-1, 0), (0, 1), (0, -1)];
+        self.get_directional_moves(&mut result, piece, row, col, directions);
         result
     }
 
-    fn get_straight_moves(&self, result: &mut MoveList, piece: Piece, row: usize, col: usize) {
+    fn get_directional_moves (&self, result: &mut MoveList, piece: Piece, row: usize, col: usize, directions: [(isize, isize); 4]) {
         let r = row as isize;
         let c = col as isize;
-
-        let directions = [(1,0), (-1, 0), (0, 1), (0, -1)];
 
         for (row_step, col_step) in directions {
             let mut current_r = r + row_step;
