@@ -199,6 +199,11 @@ impl Board {
     fn get_possible_rook_moves(&self, piece: Piece, idx: usize) -> MoveList {
         let mut result = MoveList::new();
         let (row, col) = Board::index_to_coordinates(idx);
+        self.get_straight_moves(&mut result, piece, row, col);
+        result
+    }
+
+    fn get_straight_moves(&self, result: &mut MoveList, piece: Piece, row: usize, col: usize) {
         let r = row as isize;
         let c = col as isize;
 
@@ -226,8 +231,6 @@ impl Board {
                 }
             }
         }
-
-        result
     }
 }
 
