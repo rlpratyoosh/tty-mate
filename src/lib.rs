@@ -202,7 +202,7 @@ impl Board {
         let mut result = MoveList::new();
         let (row, col) = Board::index_to_coordinates(idx);
         let directions = [(1, 0), (-1, 0), (0, 1), (0, -1)];
-        self.get_directional_moves(&mut result, piece, row, col, directions);
+        self.get_directional_moves(&mut result, piece, row, col, &directions);
         result
     }
 
@@ -210,25 +210,23 @@ impl Board {
         let mut result = MoveList::new();
         let (row, col) = Board::index_to_coordinates(idx);
         let directions = [(1,1), (-1,1), (1,-1), (-1,-1)];
-        self.get_directional_moves(&mut result, piece, row, col, directions);
+        self.get_directional_moves(&mut result, piece, row, col, &directions);
         result
     }
 
     fn get_possible_queen_moves(&self, piece: Piece, idx: usize) -> MoveList {
         let mut result = MoveList::new();
         let (row, col) = Board::index_to_coordinates(idx);
-        let diag_directions = [(1,1), (-1,1), (1,-1), (-1,-1)];
-        self.get_directional_moves(&mut result, piece, row, col, diag_directions);
-        let straight_directions = [(1, 0), (-1, 0), (0, 1), (0, -1)];
-        self.get_directional_moves(&mut result, piece, row, col, straight_directions);
+        let directions = [(1,1), (-1,1), (1,-1), (-1,-1), (1, 0), (-1, 0), (0, 1), (0, -1)];
+        self.get_directional_moves(&mut result, piece, row, col, &directions);
         result
     }
 
-    fn get_directional_moves (&self, result: &mut MoveList, piece: Piece, row: usize, col: usize, directions: [(isize, isize); 4]) {
+    fn get_directional_moves (&self, result: &mut MoveList, piece: Piece, row: usize, col: usize, directions: &[(isize, isize)]) {
         let r = row as isize;
         let c = col as isize;
 
-        for (row_step, col_step) in directions {
+        for &(row_step, col_step) in directions {
             let mut current_r = r + row_step;
             let mut current_c = c + col_step;
 
