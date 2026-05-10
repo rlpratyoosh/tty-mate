@@ -166,36 +166,8 @@ impl Board {
     fn get_possible_knight_moves(&self, piece: Piece, idx: usize) -> MoveList {
         let mut result = MoveList::new();
         let (row, col) = Board::index_to_coordinates(idx);
-        let r = row as isize;
-        let c = col as isize;
-        for step_1 in [1, -1] {
-            for step_2 in [2, -2] {
-                // 1: Row | 2: Col
-                if !(((r + step_1) > 7 || (r + step_1) < 0) || ((c + step_2) > 7 || (c + step_2 < 0))) {
-                    let target_idx = (8*(r + step_1) + c + step_2) as usize;
-                    let can_move = match self.square[target_idx] {
-                        Some(target_piece) => target_piece.piece_color != piece.piece_color,
-                        None => true,
-                    };
-                    if can_move {
-                        result.push(target_idx)
-                    }
-                }
-
-                // 2: Row | 1: Col
-                if !(((c + step_1) > 7 || (c + step_1) < 0) || ((r + step_2) > 7 || (r + step_2 < 0))) {
-                    let target_idx = (8*(r + step_2) + c + step_1) as usize;
-                    let can_move = match self.square[target_idx] {
-                        Some(target_piece) => target_piece.piece_color != piece.piece_color,
-                        None => true,
-                    };
-                    if can_move {
-                        result.push(target_idx)
-                    }
-                }
-            }
-        }
-
+        let directions = [(1, 2), (1, -2), (-1, 2), (-1, -1), (2, 1), (2, -1), (-2, 1), (-2, -1)];
+        self.get_directional_moves(&mut result, piece, row, col, &directions, 1);
         result
     }
 
@@ -203,7 +175,7 @@ impl Board {
         let mut result = MoveList::new();
         let (row, col) = Board::index_to_coordinates(idx);
         let directions = [(1, 0), (-1, 0), (0, 1), (0, -1)];
-        self.get_directional_moves(&mut result, piece, row, col, &directions);
+        self.get_directional_moves(&mut result, piece, row, col, &directions, 7);
         result
     }
 
@@ -211,7 +183,7 @@ impl Board {
         let mut result = MoveList::new();
         let (row, col) = Board::index_to_coordinates(idx);
         let directions = [(1,1), (-1,1), (1,-1), (-1,-1)];
-        self.get_directional_moves(&mut result, piece, row, col, &directions);
+        self.get_directional_moves(&mut result, piece, row, col, &directions, 7);
         result
     }
 
@@ -219,7 +191,7 @@ impl Board {
         let mut result = MoveList::new();
         let (row, col) = Board::index_to_coordinates(idx);
         let directions = [(1,1), (-1,1), (1,-1), (-1,-1), (1, 0), (-1, 0), (0, 1), (0, -1)];
-        self.get_directional_moves(&mut result, piece, row, col, &directions);
+        self.get_directional_moves(&mut result, piece, row, col, &directions, 7);
         result
     }
 
@@ -227,11 +199,11 @@ impl Board {
         let mut result = MoveList::new();
         let (row, col) = Board::index_to_coordinates(idx);
         let directions = [(1,1), (-1,1), (1,-1), (-1,-1), (1, 0), (-1, 0), (0, 1), (0, -1)];
-        self.get_directional_moves(&mut result, piece, row, col, &directions);
+        self.get_directional_moves(&mut result, piece, row, col, &directions, 1);
         result
     }
 
-    fn get_directional_moves (&self, result: &mut MoveList, piece: Piece, row: usize, col: usize, directions: &[(isize, isize)]) {
+    fn get_directional_moves (&self, result: &mut MoveList, piece: Piece, row: usize, col: usize, directions: &[(isize, isize)], max_steps: usize) {
         let r = row as isize;
         let c = col as isize;
 
@@ -239,6 +211,7 @@ impl Board {
             let mut current_r = r + row_step;
             let mut current_c = c + col_step;
 
+            let mut steps: usize = 0;
             while current_r <= 7 && current_r >= 0 && current_c <= 7 && current_c >= 0 {
                 let target_idx = (8 * current_r + current_c) as usize;
 
@@ -251,9 +224,8 @@ impl Board {
                     }
                     None => {
                         result.push(target_idx);
-                        if piece.piece_type == PieceType::King {
-                            break;
-                        }
+                        steps += 1;
+                        if steps >= max_steps { break; }
                         current_r += row_step;
                         current_c += col_step;
                     }
