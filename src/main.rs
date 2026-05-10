@@ -47,4 +47,21 @@ fn main() {
         println!("{e}");
     }
     println!("{}", board);
+    if let Err(e)= board.move_piece(4, 3) {
+        println!("{e}");
+    }
+    println!("{}", board);
+    if let Err(e)= board.move_piece(3, 2) {
+        println!("{e}");
+    }
+    println!("{}", board);
+    if let Err(e)= board.move_piece(2, 9) {
+        println!("{e}");
+    }
+    println!("{}", board);
+    if let Err(e)= board.move_piece(9, 18) {
+        println!("{e}");
+    }
+    println!("{}", board);
+    println!("{:?}", board.get_possible_moves(18).unwrap().moves);
 }

@@ -122,6 +122,7 @@ impl Board {
             PieceType::Rook => Ok(self.get_possible_rook_moves(piece, idx)),
             PieceType::Bishop => Ok(self.get_possible_bishop_moves(piece, idx)),
             PieceType::Queen => Ok(self.get_possible_queen_moves(piece, idx)),
+            PieceType::King => Ok(self.get_possible_king_moves(piece, idx)),
             _ => unimplemented!(),
         }
     }
@@ -222,6 +223,14 @@ impl Board {
         result
     }
 
+    fn get_possible_king_moves(&self, piece: Piece, idx: usize) -> MoveList {
+        let mut result = MoveList::new();
+        let (row, col) = Board::index_to_coordinates(idx);
+        let directions = [(1,1), (-1,1), (1,-1), (-1,-1), (1, 0), (-1, 0), (0, 1), (0, -1)];
+        self.get_directional_moves(&mut result, piece, row, col, &directions);
+        result
+    }
+
     fn get_directional_moves (&self, result: &mut MoveList, piece: Piece, row: usize, col: usize, directions: &[(isize, isize)]) {
         let r = row as isize;
         let c = col as isize;
@@ -242,6 +251,9 @@ impl Board {
                     }
                     None => {
                         result.push(target_idx);
+                        if piece.piece_type == PieceType::King {
+                            break;
+                        }
                         current_r += row_step;
                         current_c += col_step;
                     }
