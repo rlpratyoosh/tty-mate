@@ -100,12 +100,26 @@ impl Board {
         (row, col)
     }
 
-    pub fn get_possible_moves(&self, idx: usize) -> Result<MoveList, &str> {
+    pub fn move_piece(&mut self, current_idx: usize, target_idx: usize) -> Result<(), &'static str> {
+        let possible_moves = self.get_possible_moves(current_idx)?;
+
+        let valid_moves = &possible_moves.moves[0..possible_moves.count];
+        if !valid_moves.contains(&target_idx) {
+            return Err("Invalid move!");
+        }
+
+        self.square[target_idx] = self.square[current_idx].take();
+        Ok(())
+    }
+
+    pub fn get_possible_moves(&self, idx: usize) -> Result<MoveList, &'static str> {
         let Some(piece) = self.square[idx] else {
             return Err("No piece at the given index");
         };
         match piece.piece_type {
             PieceType::Pawn => Ok(self.get_possible_pawn_moves(piece, idx)),
+            PieceType::Knight => Ok(self.get_possible_knight_moves(piece, idx)),
+            PieceType::Rook => Ok(self.get_possible_rook_moves(piece, idx)),
             _ => unimplemented!(),
         }
     }
@@ -138,6 +152,76 @@ impl Board {
                 if let Some(target_piece) = self.square[target_idx] {
                     if target_piece.piece_color != piece.piece_color {
                         result.push(target_idx);
+                    }
+                }
+            }
+        }
+
+        result
+    }
+
+    fn get_possible_knight_moves(&self, piece: Piece, idx: usize) -> MoveList {
+        let mut result = MoveList::new();
+        let (row, col) = Board::index_to_coordinates(idx);
+        let r = row as isize;
+        let c = col as isize;
+        for step_1 in [1, -1] {
+            for step_2 in [2, -2] {
+                // 1: Row | 2: Col
+                if !(((r + step_1) > 7 || (r + step_1) < 0) || ((c + step_2) > 7 || (c + step_2 < 0))) {
+                    let target_idx = (8*(r + step_1) + c + step_2) as usize;
+                    let can_move = match self.square[target_idx] {
+                        Some(target_piece) => target_piece.piece_color != piece.piece_color,
+                        None => true,
+                    };
+                    if can_move {
+                        result.push(target_idx)
+                    }
+                }
+
+                // 2: Row | 1: Col
+                if !(((c + step_1) > 7 || (c + step_1) < 0) || ((r + step_2) > 7 || (r + step_2 < 0))) {
+                    let target_idx = (8*(r + step_2) + c + step_1) as usize;
+                    let can_move = match self.square[target_idx] {
+                        Some(target_piece) => target_piece.piece_color != piece.piece_color,
+                        None => true,
+                    };
+                    if can_move {
+                        result.push(target_idx)
+                    }
+                }
+            }
+        }
+
+        result
+    }
+
+    fn get_possible_rook_moves(&self, piece: Piece, idx: usize) -> MoveList {
+        let mut result = MoveList::new();
+        let (row, col) = Board::index_to_coordinates(idx);
+        let r = row as isize;
+        let c = col as isize;
+
+        let directions = [(1,0), (-1, 0), (0, 1), (0, -1)];
+
+        for (row_step, col_step) in directions {
+            let mut current_r = r + row_step;
+            let mut current_c = c + col_step;
+
+            while current_r <= 7 && current_r >= 0 && current_c <= 7 && current_c >= 0 {
+                let target_idx = (8 * current_r + current_c) as usize;
+
+                match self.square[target_idx] {
+                    Some(target_piece) => {
+                        if target_piece.piece_color != piece.piece_color {
+                            result.push(target_idx);
+                        }
+                        break;
+                    }
+                    None => {
+                        result.push(target_idx);
+                        current_r += row_step;
+                        current_c += col_step;
                     }
                 }
             }
