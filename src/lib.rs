@@ -120,6 +120,8 @@ impl Board {
             PieceType::Pawn => Ok(self.get_possible_pawn_moves(piece, idx)),
             PieceType::Knight => Ok(self.get_possible_knight_moves(piece, idx)),
             PieceType::Rook => Ok(self.get_possible_rook_moves(piece, idx)),
+            PieceType::Bishop => Ok(self.get_possible_bishop_moves(piece, idx)),
+            PieceType::Queen => Ok(self.get_possible_queen_moves(piece, idx)),
             _ => unimplemented!(),
         }
     }
@@ -201,6 +203,24 @@ impl Board {
         let (row, col) = Board::index_to_coordinates(idx);
         let directions = [(1, 0), (-1, 0), (0, 1), (0, -1)];
         self.get_directional_moves(&mut result, piece, row, col, directions);
+        result
+    }
+
+    fn get_possible_bishop_moves(&self, piece: Piece, idx: usize) -> MoveList {
+        let mut result = MoveList::new();
+        let (row, col) = Board::index_to_coordinates(idx);
+        let directions = [(1,1), (-1,1), (1,-1), (-1,-1)];
+        self.get_directional_moves(&mut result, piece, row, col, directions);
+        result
+    }
+
+    fn get_possible_queen_moves(&self, piece: Piece, idx: usize) -> MoveList {
+        let mut result = MoveList::new();
+        let (row, col) = Board::index_to_coordinates(idx);
+        let diag_directions = [(1,1), (-1,1), (1,-1), (-1,-1)];
+        self.get_directional_moves(&mut result, piece, row, col, diag_directions);
+        let straight_directions = [(1, 0), (-1, 0), (0, 1), (0, -1)];
+        self.get_directional_moves(&mut result, piece, row, col, straight_directions);
         result
     }
 
