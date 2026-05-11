@@ -152,21 +152,20 @@ impl Widget for &App {
                 let light_color = (r+c) % 2 == 0;
                 let idx = (8 * (7-r) + c) as usize;
                 let mut bg_color = if idx == self.hover {
-                    Color::Rgb(100, 250, 200)
+                    Color::Rgb(255, 180, 50) // Hover: Glowing Amber
+                } else if self.current_move_list.moves[0..self.current_move_list.count].contains(&idx) {
+                    Color::Rgb(115, 130, 60) // Possible Move: Faded Pine / Olive Green
                 } else {
-                    if self.current_move_list.moves[0..self.current_move_list.count].contains(&idx) {
-                        Color::Rgb(128, 0, 128)
+                    if light_color {
+                        Color::Rgb(235, 189, 140) // Light Square: Soft Maple
                     } else {
-                        if light_color {
-                            Color::Rgb(200, 200, 200)
-                        } else {
-                            Color::Rgb(100, 100, 100)
-                        }
+                        Color::Rgb(140, 75, 38)   // Dark Square: Deep Chestnut
                     }
                 };
+
                 if let Some(selected) = self.selected {
                     if selected == idx {
-                        bg_color = Color::Rgb(000, 250, 000);
+                        bg_color = Color::Rgb(200, 65, 45); // Selected: Burnt Crimson / Autumn Leaf
                     }
                 }
                 let x = margin_x + inner_area.x + (c * cell_width);
