@@ -21,7 +21,7 @@ use ratatui::{
 use tty_mate::{Board, MoveList};
 
 fn main() -> std::io::Result<()> {
-    ratatui::run(|mut terminal| App::default().run(terminal))
+    ratatui::run(|terminal| App::default().run(terminal))
 }
 
 struct App {
