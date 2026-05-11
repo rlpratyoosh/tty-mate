@@ -34,12 +34,12 @@ impl Piece {
 #[derive(Debug)]
 pub struct Board {
     square: [Option<Piece>; 64],
-    current_turn: PieceColor,
+    current_turn: PieceColor, // For backend validation of moves
 }
 
 #[derive(Debug)]
 pub struct MoveList {
-    pub moves: [usize; 27],
+    pub moves: [usize; 27], // Max possible moves for a queen in the center of an empty board
     pub count: usize,
 }
 
@@ -65,9 +65,9 @@ impl Board {
             let (row, col) = Board::index_to_coordinates(i);
 
             let piece_color = if row < 2 {
-                PieceColor::White
+                PieceColor::White // White pieces starting from 0th index
             } else if row > 5 {
-                PieceColor::Black
+                PieceColor::Black // Black pieces ending at 63rd index
             } else {
                 continue;
             };
@@ -82,7 +82,7 @@ impl Board {
                     _ => unreachable!(),
                 },
                 1 | 6 => PieceType::Pawn,
-                _ => unreachable!(),
+                _ => unreachable!(), // Nothing else exists but need to satisfy the match statement
             };
 
             square[i] = Some(Piece::new(piece_type, piece_color));
@@ -90,7 +90,7 @@ impl Board {
 
         Board {
             square,
-            current_turn: PieceColor::White,
+            current_turn: PieceColor::White, // Default to white's turn
         }
     }
 
@@ -101,14 +101,16 @@ impl Board {
     }
 
     pub fn move_piece(&mut self, current_idx: usize, target_idx: usize) -> Result<(), &'static str> {
-        let possible_moves = self.get_possible_moves(current_idx)?;
+        let possible_moves = self.get_possible_moves(current_idx)?; // Also checks if there's a piece at current_idx and if it's the current player's turn
 
-        let valid_moves = &possible_moves.moves[0..possible_moves.count];
+        let valid_moves = &possible_moves.moves[0..possible_moves.count]; // Slice the moves array to get only the valid moves
         if !valid_moves.contains(&target_idx) {
             return Err("Invalid move!");
         }
 
         self.square[target_idx] = self.square[current_idx].take();
+
+        // Switch turns
         self.current_turn = match self.current_turn {
             PieceColor::White => PieceColor::Black,
             PieceColor::Black => PieceColor::White,
@@ -117,9 +119,12 @@ impl Board {
     }
 
     pub fn get_possible_moves(&self, idx: usize) -> Result<MoveList, &'static str> {
+        // Check if there's a piece at the given index
         let Some(piece) = self.square[idx] else {
             return Err("No piece at the given index");
         };
+
+        // Check if it's the current player's turn
         if piece.piece_color != self.current_turn {
             return Err("It's not the current player's turn");
         }
@@ -138,16 +143,18 @@ impl Board {
         let (row, col) = Board::index_to_coordinates(idx);
         let r = row as isize;
         let c = col as isize;
-        let row_step: isize = if piece.piece_color == PieceColor::White { 1 } else { -1 };
+        let row_step: isize = if piece.piece_color == PieceColor::White { 1 } else { -1 }; // Move up for white and down for black
 
         // Check forward
         for j in [1, 2] {
             let row_step = j*row_step;
-            if (r + row_step) > 7 || (r + row_step) < 0 {
+            if (r + row_step) > 7 || (r + row_step) < 0 { // Out of bounds
                 break;
             }
             let target_idx = 8*((r+row_step) as usize)+col;
-            let None = self.square[target_idx] else { break; };
+            let None = self.square[target_idx] else { break; }; // Invalid move if there's a piece in the way
+ 
+            // The pawn can move 2 steps forward only if it's in its starting position
             if j==2 && !((row == 1 && piece.piece_color == PieceColor::White) || (row == 6 && piece.piece_color == PieceColor::Black)) {
                 break;
             }
@@ -156,10 +163,10 @@ impl Board {
 
         // Check Diagonally
         for col_step in [1, -1] {
-            if (r + row_step) >= 0 && (r + row_step) <= 7 && (c + col_step) >= 0 && (c + col_step) <= 7 {
+            if (r + row_step) >= 0 && (r + row_step) <= 7 && (c + col_step) >= 0 && (c + col_step) <= 7 { // Bounds check
                 let target_idx = (8 * (r+row_step) + (c + col_step)) as usize;
                 if let Some(target_piece) = self.square[target_idx] {
-                    if target_piece.piece_color != piece.piece_color {
+                    if target_piece.piece_color != piece.piece_color { // Valid move if there's an opponent's piece
                         result.push(target_idx);
                     }
                 }
@@ -172,22 +179,23 @@ impl Board {
     fn get_possible_knight_moves(&self, piece: Piece, idx: usize) -> MoveList {
         let mut result = MoveList::new();
         let (row, col) = Board::index_to_coordinates(idx);
-        let directions = [(1, 2), (1, -2), (-1, 2), (-1, -2), (2, 1), (2, -1), (-2, 1), (-2, -1)];
-        self.get_directional_moves(&mut result, piece, row, col, &directions, 1);
+        let directions = [(1, 2), (1, -2), (-1, 2), (-1, -2), (2, 1), (2, -1), (-2, 1), (-2, -1)]; // All possible knight directional moves
+        self.get_directional_moves(&mut result, piece, row, col, &directions, 1); // Checks only for 1 step in each direction since knights can only move 1 step in their unique L-shaped pattern
         result
     }
 
     fn get_possible_rook_moves(&self, piece: Piece, idx: usize) -> MoveList {
         let mut result = MoveList::new();
         let (row, col) = Board::index_to_coordinates(idx);
-        let directions = [(1, 0), (-1, 0), (0, 1), (0, -1)];
-        self.get_directional_moves(&mut result, piece, row, col, &directions, 7);
+        let directions = [(1, 0), (-1, 0), (0, 1), (0, -1)]; // Straight directions
+        self.get_directional_moves(&mut result, piece, row, col, &directions, 7); // Checks for up to 7 steps in each direction since the rook can move across the entire board
         result
     }
 
     fn get_possible_bishop_moves(&self, piece: Piece, idx: usize) -> MoveList {
         let mut result = MoveList::new();
         let (row, col) = Board::index_to_coordinates(idx);
+        // Same as rook but diagonal directions
         let directions = [(1,1), (-1,1), (1,-1), (-1,-1)];
         self.get_directional_moves(&mut result, piece, row, col, &directions, 7);
         result
@@ -196,6 +204,7 @@ impl Board {
     fn get_possible_queen_moves(&self, piece: Piece, idx: usize) -> MoveList {
         let mut result = MoveList::new();
         let (row, col) = Board::index_to_coordinates(idx);
+        // Rook and Bishop Combined
         let directions = [(1,1), (-1,1), (1,-1), (-1,-1), (1, 0), (-1, 0), (0, 1), (0, -1)];
         self.get_directional_moves(&mut result, piece, row, col, &directions, 7);
         result
@@ -204,8 +213,8 @@ impl Board {
     fn get_possible_king_moves(&self, piece: Piece, idx: usize) -> MoveList {
         let mut result = MoveList::new();
         let (row, col) = Board::index_to_coordinates(idx);
-        let directions = [(1,1), (-1,1), (1,-1), (-1,-1), (1, 0), (-1, 0), (0, 1), (0, -1)];
-        self.get_directional_moves(&mut result, piece, row, col, &directions, 1);
+        let directions = [(1,1), (-1,1), (1,-1), (-1,-1), (1, 0), (-1, 0), (0, 1), (0, -1)]; // Directions same as queen
+        self.get_directional_moves(&mut result, piece, row, col, &directions, 1); // But moves only 1 step
         result
     }
 
@@ -213,25 +222,27 @@ impl Board {
         let r = row as isize;
         let c = col as isize;
 
+        // Iterate over every direction
         for &(row_step, col_step) in directions {
             let mut current_r = r + row_step;
             let mut current_c = c + col_step;
 
             let mut steps: usize = 0;
-            while current_r <= 7 && current_r >= 0 && current_c <= 7 && current_c >= 0 {
+            // Keep moving until max steps is reached
+            while current_r <= 7 && current_r >= 0 && current_c <= 7 && current_c >= 0 { // Bounds check
                 let target_idx = (8 * current_r + current_c) as usize;
 
                 match self.square[target_idx] {
                     Some(target_piece) => {
                         if target_piece.piece_color != piece.piece_color {
-                            result.push(target_idx);
+                            result.push(target_idx); // Valid move if opponent's piece
                         }
-                        break;
+                        break; // Can't go forward
                     }
                     None => {
                         result.push(target_idx);
                         steps += 1;
-                        if steps >= max_steps { break; }
+                        if steps >= max_steps { break; } // Max steps reached
                         current_r += row_step;
                         current_c += col_step;
                     }
@@ -251,6 +262,7 @@ impl Board {
                             PieceType::Queen => 'q',
                             PieceType::King => 'k',
                 };
+                // Small for black, Capital for white
                 Some(match piece.piece_color {
                     PieceColor::White => char.to_ascii_uppercase(),
                     _ => char
@@ -261,6 +273,7 @@ impl Board {
     }
 }
 
+// For debugging only
 impl fmt::Display for Board {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
          for i in 0..8 {
