@@ -116,6 +116,9 @@ impl Board {
         let Some(piece) = self.square[idx] else {
             return Err("No piece at the given index");
         };
+        if piece.piece_color != self.current_turn {
+            return Err("It's not the current player's turn");
+        }
         match piece.piece_type {
             PieceType::Pawn => Ok(self.get_possible_pawn_moves(piece, idx)),
             PieceType::Knight => Ok(self.get_possible_knight_moves(piece, idx)),
@@ -123,7 +126,6 @@ impl Board {
             PieceType::Bishop => Ok(self.get_possible_bishop_moves(piece, idx)),
             PieceType::Queen => Ok(self.get_possible_queen_moves(piece, idx)),
             PieceType::King => Ok(self.get_possible_king_moves(piece, idx)),
-            _ => unimplemented!(),
         }
     }
 
