@@ -166,7 +166,7 @@ impl Board {
     fn get_possible_knight_moves(&self, piece: Piece, idx: usize) -> MoveList {
         let mut result = MoveList::new();
         let (row, col) = Board::index_to_coordinates(idx);
-        let directions = [(1, 2), (1, -2), (-1, 2), (-1, -1), (2, 1), (2, -1), (-2, 1), (-2, -1)];
+        let directions = [(1, 2), (1, -2), (-1, 2), (-1, -2), (2, 1), (2, -1), (-2, 1), (-2, -1)];
         self.get_directional_moves(&mut result, piece, row, col, &directions, 1);
         result
     }
