@@ -65,9 +65,9 @@ impl Board {
             let (row, col) = Board::index_to_coordinates(i);
 
             let piece_color = if row < 2 {
-                PieceColor::White
-            } else if row > 5 {
                 PieceColor::Black
+            } else if row > 5 {
+                PieceColor::White
             } else {
                 continue;
             };
@@ -239,11 +239,32 @@ impl Board {
             }
         }
     }
+
+    pub fn get_piece_char(&self, r: usize, c: usize) -> Option<char> {
+        let idx = 8*r + c;
+        match self.square[idx] {
+            Some(piece) => {
+                let char = match piece.piece_type {
+                            PieceType::Pawn => 'p',
+                            PieceType::Knight => 'n',
+                            PieceType::Bishop => 'b',
+                            PieceType::Rook => 'r',
+                            PieceType::Queen => 'q',
+                            PieceType::King => 'k',
+                };
+                Some(match piece.piece_color {
+                    PieceColor::White => char.to_ascii_uppercase(),
+                    _ => char
+                })
+            },
+            None => None,
+        }
+    }
 }
 
 impl fmt::Display for Board {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-         for i in (0..8).rev() {
+         for i in 0..8 {
             for j in 0..8 {
                 let idx = 8 * i + j;
                 let Some(piece) = self.square[idx].as_ref() else {

@@ -10,27 +10,29 @@ use crossterm::{
 use ratatui::{
     DefaultTerminal,
     Frame,
-    text::{Line, Text},
-    style::Stylize,
-    layout::Rect,
+    text::{Line},
+    style::{Style, Stylize, Color},
+    layout::{Rect},
     buffer::Buffer,
-    widgets::{Block, Paragraph, Widget},
+    widgets::{Block, Widget},
     symbols::border,
 };
+
+use tty_mate::Board;
 
 fn main() -> std::io::Result<()> {
     ratatui::run(|mut terminal| App::default().run(terminal))
 }
 
 struct App {
-    message: String,
+    board: Board,
     exit: bool,
 }
 
 impl App {
     fn default() -> Self {
         App {
-            message: "Welcome to the world of chess!".to_string(),
+            board: Board::new(),
             exit: false,
         }
     }
@@ -60,16 +62,12 @@ impl App {
     fn handle_key_event(&mut self, key_event: KeyEvent) {
         match key_event.code {
             KeyCode::Char('q') => self.exit(),
-            _ => self.change_message("Press q to quit!".to_string()),
+            _ => {},
         }
     }
 
     fn exit(&mut self) {
         self.exit = true;
-    }
-
-    fn change_message(&mut self, message: String) {
-        self.message = message;
     }
 }
 
@@ -79,10 +77,43 @@ impl Widget for &App {
         let block = Block::bordered()
             .title(title)
             .border_set(border::THICK);
-        let message = Text::from(self.message.as_str());
-        Paragraph::new(message)
-            .centered()
-            .block(block)
-            .render(area, buf);
+        let inner_area = block.inner(area);
+        block.render(area, buf);
+
+        let cell_width = 6;
+        let cell_height = 3;
+
+        let margin_x = 12;
+        let margin_y = 9;
+
+        for r in 0..8 {
+            for c in 0..8 {
+                let light_color = (r+c) % 2 == 0;
+                let bg_color = if light_color {
+                    Color::Rgb(200, 200, 200)
+                } else {
+                    Color::Rgb(100, 100, 100)
+                };
+                let x = margin_x + inner_area.x + (c * cell_width);
+                let y = margin_y + inner_area.y + (r * cell_height);
+                let display_char = match self.board.get_piece_char(r.into(), c.into()) {
+                    Some(char) => char,
+                    None => ' ',
+                };
+
+                for h in 0..cell_height {
+                    let inner_y = y+h;
+                    if x < inner_area.right() && inner_y < inner_area.bottom() {
+                        let spaces = " ".repeat((cell_width/2) as usize);
+                        let content = if h == cell_height/2 {
+                            format!("{}{}{}", spaces, display_char, spaces)
+                        } else {
+                            format!("{} {}", spaces, spaces)
+                        };
+                        buf.set_string(x, inner_y, content, Style::default().bg(bg_color).fg(Color::Black));
+                    }
+                }
+            }
+        }
     }
 }
