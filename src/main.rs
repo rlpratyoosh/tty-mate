@@ -25,6 +25,7 @@ fn main() -> std::io::Result<()> {
 }
 
 struct App {
+    hover: usize,
     board: Board,
     exit: bool,
 }
@@ -32,6 +33,7 @@ struct App {
 impl App {
     fn default() -> Self {
         App {
+            hover: 27,
             board: Board::new(),
             exit: false,
         }
@@ -62,8 +64,36 @@ impl App {
     fn handle_key_event(&mut self, key_event: KeyEvent) {
         match key_event.code {
             KeyCode::Char('q') => self.exit(),
+            KeyCode::Char('j') => self.hover_down(),
+            KeyCode::Char('k') => self.hover_up(),
+            KeyCode::Char('h') => self.hover_left(),
+            KeyCode::Char('l') => self.hover_right(),
             _ => {},
         }
+    }
+
+    fn hover_up(&mut self) {
+        let (row, col) = Board::index_to_coordinates(self.hover);
+        let row = if row == 0 { 7 } else { row-1 };
+        self.hover = 8 * row + col;
+    }
+
+    fn hover_down(&mut self) {
+        let (row, col) = Board::index_to_coordinates(self.hover);
+        let row = if row == 7 { 0 } else { row+1 };
+        self.hover = 8 * row + col;
+    }
+
+    fn hover_right(&mut self) {
+        let (row, col) = Board::index_to_coordinates(self.hover);
+        let col = if col == 7 { 0 } else { col+1 };
+        self.hover = 8 * row + col;
+    }
+
+    fn hover_left(&mut self) {
+        let (row, col) = Board::index_to_coordinates(self.hover);
+        let col = if col == 0 { 7 } else { col-1 };
+        self.hover = 8 * row + col;
     }
 
     fn exit(&mut self) {
@@ -89,14 +119,19 @@ impl Widget for &App {
         for r in 0..8 {
             for c in 0..8 {
                 let light_color = (r+c) % 2 == 0;
-                let bg_color = if light_color {
-                    Color::Rgb(200, 200, 200)
+                let idx = (8 * (7-r) + c) as usize;
+                let bg_color = if idx == self.hover {
+                    Color::Rgb(100, 250, 200)
                 } else {
-                    Color::Rgb(100, 100, 100)
+                    if light_color {
+                        Color::Rgb(200, 200, 200)
+                    } else {
+                        Color::Rgb(100, 100, 100)
+                    }
                 };
                 let x = margin_x + inner_area.x + (c * cell_width);
                 let y = margin_y + inner_area.y + (r * cell_height);
-                let display_char = match self.board.get_piece_char(r.into(), c.into()) {
+                let display_char = match self.board.get_piece_char(idx) {
                     Some(char) => char,
                     None => ' ',
                 };
@@ -104,11 +139,10 @@ impl Widget for &App {
                 for h in 0..cell_height {
                     let inner_y = y+h;
                     if x < inner_area.right() && inner_y < inner_area.bottom() {
-                        let spaces = " ".repeat((cell_width/2) as usize);
                         let content = if h == cell_height/2 {
-                            format!("{}{}{}", spaces, display_char, spaces)
+                            format!("  {}   ", display_char)
                         } else {
-                            format!("{} {}", spaces, spaces)
+                            "      ".to_string()
                         };
                         buf.set_string(x, inner_y, content, Style::default().bg(bg_color).fg(Color::Black));
                     }

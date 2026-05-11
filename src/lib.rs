@@ -65,9 +65,9 @@ impl Board {
             let (row, col) = Board::index_to_coordinates(i);
 
             let piece_color = if row < 2 {
-                PieceColor::Black
-            } else if row > 5 {
                 PieceColor::White
+            } else if row > 5 {
+                PieceColor::Black
             } else {
                 continue;
             };
@@ -94,7 +94,7 @@ impl Board {
         }
     }
 
-    fn index_to_coordinates(index: usize) -> (usize, usize) {
+    pub fn index_to_coordinates(index: usize) -> (usize, usize) {
         let row = index / 8;
         let col = index % 8;
         (row, col)
@@ -240,8 +240,7 @@ impl Board {
         }
     }
 
-    pub fn get_piece_char(&self, r: usize, c: usize) -> Option<char> {
-        let idx = 8*r + c;
+    pub fn get_piece_char(&self, idx: usize) -> Option<char> {
         match self.square[idx] {
             Some(piece) => {
                 let char = match piece.piece_type {
