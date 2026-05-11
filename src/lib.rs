@@ -109,6 +109,10 @@ impl Board {
         }
 
         self.square[target_idx] = self.square[current_idx].take();
+        self.current_turn = match self.current_turn {
+            PieceColor::White => PieceColor::Black,
+            PieceColor::Black => PieceColor::White,
+        };
         Ok(())
     }
 
