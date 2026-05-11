@@ -80,7 +80,9 @@ impl App {
     fn handle_enter(&mut self) {
         if let Some(selected) = self.selected {
             if self.current_move_list.moves[0..self.current_move_list.count].contains(&self.hover) {
-                self.board.move_piece(selected, self.hover);
+                if let Err(_) = self.board.move_piece(selected, self.hover) {
+                    return;
+                }
                 self.reset_moves();
                 return;
             }
