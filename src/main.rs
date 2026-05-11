@@ -18,7 +18,7 @@ use ratatui::{
     symbols::border,
 };
 
-use tty_mate::Board;
+use tty_mate::{Board, MoveList};
 
 fn main() -> std::io::Result<()> {
     ratatui::run(|mut terminal| App::default().run(terminal))
@@ -26,6 +26,8 @@ fn main() -> std::io::Result<()> {
 
 struct App {
     hover: usize,
+    selected: Option<usize>,
+    current_move_list: MoveList,
     board: Board,
     exit: bool,
 }
@@ -34,6 +36,8 @@ impl App {
     fn default() -> Self {
         App {
             hover: 27,
+            selected: None,
+            current_move_list: MoveList::new(),
             board: Board::new(),
             exit: false,
         }
@@ -68,8 +72,35 @@ impl App {
             KeyCode::Char('k') => self.hover_up(),
             KeyCode::Char('h') => self.hover_left(),
             KeyCode::Char('l') => self.hover_right(),
+            KeyCode::Enter => self.handle_enter(),
             _ => {},
         }
+    }
+
+    fn handle_enter(&mut self) {
+        if let Some(selected) = self.selected {
+            if self.current_move_list.moves[0..self.current_move_list.count].contains(&self.hover) {
+                self.board.move_piece(selected, self.hover);
+                self.reset_moves();
+                return;
+            }
+        }
+        self.select();
+    }
+
+    fn reset_moves(&mut self) {
+        self.selected = None;
+        self.current_move_list = MoveList::new();
+    }
+
+    fn select(&mut self) {
+        self.current_move_list = match self.board.get_possible_moves(self.hover) {
+            Ok(move_list) => {
+                self.selected = Some(self.hover);
+                move_list
+            }
+            Err(_) => return,
+        };
     }
 
     fn hover_up(&mut self) {
@@ -120,15 +151,24 @@ impl Widget for &App {
             for c in 0..8 {
                 let light_color = (r+c) % 2 == 0;
                 let idx = (8 * (7-r) + c) as usize;
-                let bg_color = if idx == self.hover {
+                let mut bg_color = if idx == self.hover {
                     Color::Rgb(100, 250, 200)
                 } else {
-                    if light_color {
-                        Color::Rgb(200, 200, 200)
+                    if self.current_move_list.moves[0..self.current_move_list.count].contains(&idx) {
+                        Color::Rgb(128, 0, 128)
                     } else {
-                        Color::Rgb(100, 100, 100)
+                        if light_color {
+                            Color::Rgb(200, 200, 200)
+                        } else {
+                            Color::Rgb(100, 100, 100)
+                        }
                     }
                 };
+                if let Some(selected) = self.selected {
+                    if selected == idx {
+                        bg_color = Color::Rgb(000, 250, 000);
+                    }
+                }
                 let x = margin_x + inner_area.x + (c * cell_width);
                 let y = margin_y + inner_area.y + (r * cell_height);
                 let display_char = match self.board.get_piece_char(idx) {
