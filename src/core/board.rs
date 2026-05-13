@@ -108,8 +108,18 @@ impl Board {
         (row, col)
     }
 
+    pub fn get_checked_index(&self) -> Option<usize> {
+        if self.checked {
+            match self.current_turn {
+                PieceColor::White => Some(self.white_king_pos),
+                PieceColor::Black => Some(self.black_king_pos),
+            };
+        }
+        None
+    }
+
     pub fn move_piece(&mut self, current_idx: usize, target_idx: usize) -> Result<(), &'static str> {
-        let possible_moves = self.get_possible_moves(current_idx)?; // Also checks if there's a piece at current_idx
+        let possible_moves = self.get_valid_moves(current_idx)?; // Also checks if there's a piece at current_idx
         let piece = self.square[current_idx].unwrap(); // Safe to unwrap since we just checked it
 
         // Check if it's the current player's turn
@@ -137,7 +147,9 @@ impl Board {
         };
 
         let checkers = self.is_king_in_check(self.current_turn);
-        if let Some(_) = checkers[0] {
+        if checkers[0].is_none() {
+            self.checked = false;
+        } else {
             self.checked = true;
         }
         self.checkers = checkers;
