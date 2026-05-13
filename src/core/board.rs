@@ -208,7 +208,7 @@ impl Board {
         }
     }
 
-    pub fn get_valid_moves(&self, idx: usize) -> Result<MoveList, &'static str> {
+    pub fn get_valid_moves(&mut self, idx: usize) -> Result<MoveList, &'static str> {
         let possible_moves = self.get_possible_moves(idx)?;
         let mut valid_moves = MoveList::new();
         let piece_color = self.square[idx].unwrap().piece_color; // Sure that a piece exists here
@@ -234,8 +234,8 @@ impl Board {
             self.square[target_idx] = target_piece;
 
             // Restore King pos
-            if target_idx == self.white_king_pos { self.white_king_pos == idx; }
-            if target_idx == self.black_king_pos { self.black_king_pos == idx;  }
+            if target_idx == self.white_king_pos { self.white_king_pos = idx; }
+            if target_idx == self.black_king_pos { self.black_king_pos = idx;  }
         }
 
         Ok(valid_moves)
