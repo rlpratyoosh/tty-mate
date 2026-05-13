@@ -208,6 +208,39 @@ impl Board {
         }
     }
 
+    pub fn get_valid_moves(&self, idx: usize) -> Result<MoveList, &'static str> {
+        let possible_moves = self.get_possible_moves(idx)?;
+        let mut valid_moves = MoveList::new();
+        let piece_color = self.square[idx].unwrap().piece_color; // Sure that a piece exists here
+
+        for i in 0..possible_moves.count {
+            let target_idx = possible_moves.moves[i];
+
+            // Ghost Move
+            let target_piece = self.square[target_idx];
+            self.square[target_idx] = self.square[idx].take();
+
+            // Temporarily change king pos if its a king
+            if idx == self.white_king_pos { self.white_king_pos = target_idx; }
+            if idx == self.black_king_pos { self.black_king_pos = target_idx; }
+
+            let is_safe = is_king_in_check(piece_color)[0].is_none();
+
+            if is_safe {
+                valid_moves.push(target_idx);
+            }
+
+            self.square[idx] = self.square[target_idx].take();
+            self.square[target_idx] = target_piece;
+
+            // Restore King pos
+            if target_idx == self.white_king_pos { self.white_king_pos == idx; }
+            if target_idx == self.black_king_pos { self.black_king_pos == idx;  }
+        }
+
+        Ok(valid_moves)
+    }
+
     fn get_possible_pawn_moves(&self, piece: Piece, idx: usize, checking_for_check: bool) -> MoveList {
         let mut result = MoveList::new();
         let (row, col) = Board::index_to_coordinates(idx);
