@@ -93,7 +93,7 @@ impl Game {
     }
 
     fn select(&mut self) {
-        self.current_move_list = match self.board.get_possible_moves(self.hover) {
+        self.current_move_list = match self.board.get_valid_moves(self.hover) {
             Ok(move_list) => {
                 self.selected = Some(self.hover);
                 move_list
@@ -167,6 +167,13 @@ impl Widget for &Game {
                         bg_color = Color::Rgb(200, 65, 45); // Selected: Burnt Crimson / Autumn Leaf
                     }
                 }
+
+                if let Some(checked) = self.board.get_checked_index() {
+                    if checked == idx {
+                        bg_color = Color::Rgb(180, 30, 30); // Checked: Burning Ember
+                    }
+                }
+
                 let x = margin_x + inner_area.x + (c * cell_width);
                 let y = margin_y + inner_area.y + (r * cell_height);
                 let display_char = match self.board.get_piece_char(idx) {
