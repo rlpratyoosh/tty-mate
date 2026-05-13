@@ -35,6 +35,10 @@ impl Piece {
 pub struct Board {
     square: [Option<Piece>; 64],
     current_turn: PieceColor, // For backend validation of moves
+    checked: bool,
+    checkers: [Option<usize>; 2], // Max 2 pieces can check the king at once
+    black_king_pos: usize,
+    white_king_pos: usize,
 }
 
 #[derive(Debug)]
@@ -51,7 +55,7 @@ impl MoveList {
         }
     }
 
-    pub fn push(&mut self, idx: usize) {
+    fn push(&mut self, idx: usize) {
         self.moves[self.count] = idx;
         self.count += 1;
     }
@@ -91,6 +95,10 @@ impl Board {
         Board {
             square,
             current_turn: PieceColor::White, // Default to white's turn
+            checked: false,
+            checkers: [None; 2],
+            black_king_pos: 60, // Starting position of black king
+            white_king_pos: 4, // Starting position of white king
         }
     }
 
@@ -101,7 +109,13 @@ impl Board {
     }
 
     pub fn move_piece(&mut self, current_idx: usize, target_idx: usize) -> Result<(), &'static str> {
-        let possible_moves = self.get_possible_moves(current_idx)?; // Also checks if there's a piece at current_idx and if it's the current player's turn
+        let possible_moves = self.get_possible_moves(current_idx)?; // Also checks if there's a piece at current_idx
+        let piece = self.square[current_idx].unwrap(); // Safe to unwrap since we just checked it
+
+        // Check if it's the current player's turn
+        if piece.piece_color != self.current_turn {
+            return Err("It's not the current player's turn");
+        }
 
         let valid_moves = &possible_moves.moves[0..possible_moves.count]; // Slice the moves array to get only the valid moves
         if !valid_moves.contains(&target_idx) {
@@ -109,13 +123,73 @@ impl Board {
         }
 
         self.square[target_idx] = self.square[current_idx].take();
+        if piece.piece_type == PieceType::King {
+            match piece.piece_color {
+                PieceColor::Black => self.black_king_pos = target_idx,
+                PieceColor::White => self.white_king_pos = target_idx,
+            }
+        }
 
         // Switch turns
         self.current_turn = match self.current_turn {
             PieceColor::White => PieceColor::Black,
             PieceColor::Black => PieceColor::White,
         };
+
+        let checkers = self.is_king_in_check(self.current_turn);
+        if let Some(_) = checkers[0] {
+            self.checked = true;
+        }
+        self.checkers = checkers;
+
         Ok(())
+    }
+
+    fn is_king_in_check(&self, king_color: PieceColor) -> [Option<usize>; 2] {
+        let mut result = [None; 2];
+        let mut i: usize = 0;
+        let king_pos = match king_color {
+            PieceColor::White => self.white_king_pos,
+            PieceColor::Black => self.black_king_pos,
+        };
+        let king_piece = match king_color {
+            PieceColor::White => Piece::new(PieceType::King, PieceColor::White),
+            PieceColor::Black => Piece::new(PieceType::King, PieceColor::Black),
+        };
+        let pawn_moves = self.get_possible_pawn_moves(king_piece, king_pos, true);
+        if self.check_for_checks(pawn_moves, king_color, &[PieceType::Pawn], &mut result, &mut i) {
+            return result;
+        }
+        let knight_moves = self.get_possible_knight_moves(king_piece, king_pos);
+        if self.check_for_checks(knight_moves, king_color, &[PieceType::Knight], &mut result, &mut i) {
+            return result;
+        }
+        let rook_moves = self.get_possible_rook_moves(king_piece, king_pos);
+        if self.check_for_checks(rook_moves, king_color, &[PieceType::Rook, PieceType::Queen], &mut result, &mut i) {
+            return result;
+        }
+        let bishop_moves = self.get_possible_bishop_moves(king_piece, king_pos);
+        if self.check_for_checks(bishop_moves, king_color, &[PieceType::Bishop, PieceType::Queen], &mut result, &mut i) {
+            return result;
+        }
+        let king_moves = self.get_possible_king_moves(king_piece, king_pos);
+        if self.check_for_checks(king_moves, king_color, &[PieceType::King], &mut result, &mut i) {
+            return result;
+        }
+        result
+    }
+
+    fn check_for_checks(&self, moves: MoveList, king_color: PieceColor, piece_type: &[PieceType], result: &mut [Option<usize>; 2], i: &mut usize) -> bool {
+        for id in &moves.moves[0..moves.count] {
+            if let Some(piece) = self.square[*id] {
+                if piece.piece_color != king_color && piece_type.contains(&piece.piece_type) {
+                    result[*i] = Some(*id);
+                    *i += 1;
+                    if *i == 2 { return true; } // Max 2 checkers, no need to continue
+                }
+            }
+        }
+        return false;
     }
 
     pub fn get_possible_moves(&self, idx: usize) -> Result<MoveList, &'static str> {
@@ -124,12 +198,8 @@ impl Board {
             return Err("No piece at the given index");
         };
 
-        // Check if it's the current player's turn
-        if piece.piece_color != self.current_turn {
-            return Err("It's not the current player's turn");
-        }
         match piece.piece_type {
-            PieceType::Pawn => Ok(self.get_possible_pawn_moves(piece, idx)),
+            PieceType::Pawn => Ok(self.get_possible_pawn_moves(piece, idx, false)),
             PieceType::Knight => Ok(self.get_possible_knight_moves(piece, idx)),
             PieceType::Rook => Ok(self.get_possible_rook_moves(piece, idx)),
             PieceType::Bishop => Ok(self.get_possible_bishop_moves(piece, idx)),
@@ -138,12 +208,26 @@ impl Board {
         }
     }
 
-    fn get_possible_pawn_moves(&self, piece: Piece, idx: usize) -> MoveList {
+    fn get_possible_pawn_moves(&self, piece: Piece, idx: usize, checking_for_check: bool) -> MoveList {
         let mut result = MoveList::new();
         let (row, col) = Board::index_to_coordinates(idx);
         let r = row as isize;
         let c = col as isize;
         let row_step: isize = if piece.piece_color == PieceColor::White { 1 } else { -1 }; // Move up for white and down for black
+
+        // Check Diagonally
+        for col_step in [1, -1] {
+            if (r + row_step) >= 0 && (r + row_step) <= 7 && (c + col_step) >= 0 && (c + col_step) <= 7 { // Bounds check
+                let target_idx = (8 * (r+row_step) + (c + col_step)) as usize;
+                if let Some(target_piece) = self.square[target_idx] {
+                    if target_piece.piece_color != piece.piece_color { // Valid move if there's an opponent's piece
+                        result.push(target_idx);
+                    }
+                }
+            }
+        }
+
+        if checking_for_check { return result; } // If we're just checking for checks, we don't need to check forward moves since pawns can't check kings with forward moves
 
         // Check forward
         for j in [1, 2] {
@@ -159,18 +243,6 @@ impl Board {
                 break;
             }
             result.push(target_idx)
-        }
-
-        // Check Diagonally
-        for col_step in [1, -1] {
-            if (r + row_step) >= 0 && (r + row_step) <= 7 && (c + col_step) >= 0 && (c + col_step) <= 7 { // Bounds check
-                let target_idx = (8 * (r+row_step) + (c + col_step)) as usize;
-                if let Some(target_piece) = self.square[target_idx] {
-                    if target_piece.piece_color != piece.piece_color { // Valid move if there's an opponent's piece
-                        result.push(target_idx);
-                    }
-                }
-            }
         }
 
         result
