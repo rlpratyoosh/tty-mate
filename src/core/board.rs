@@ -224,7 +224,7 @@ impl Board {
             if idx == self.white_king_pos { self.white_king_pos = target_idx; }
             if idx == self.black_king_pos { self.black_king_pos = target_idx; }
 
-            let is_safe = is_king_in_check(piece_color)[0].is_none();
+            let is_safe = self.is_king_in_check(piece_color)[0].is_none();
 
             if is_safe {
                 valid_moves.push(target_idx);
