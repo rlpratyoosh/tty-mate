@@ -113,9 +113,10 @@ impl Board {
             match self.current_turn {
                 PieceColor::White => Some(self.white_king_pos),
                 PieceColor::Black => Some(self.black_king_pos),
-            };
+            }
+        } else {
+            None
         }
-        None
     }
 
     pub fn move_piece(&mut self, current_idx: usize, target_idx: usize) -> Result<(), &'static str> {
