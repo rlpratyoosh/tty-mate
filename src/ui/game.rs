@@ -87,7 +87,9 @@ impl Game {
                     return;
                 }
                 let (from_r, from_c) = Board::index_to_coordinates(selected);
+                let from_r = 8 - from_r - 1;
                 let (to_r, to_c) = Board::index_to_coordinates(self.hover);
+                let to_r = 8 - to_r - 1;
                 self.message = format!("Moved from {}{} to {}{}", (b'a' + from_c as u8) as char, 8-from_r, (b'a' + to_c as u8) as char, 8-to_r);
                 self.reset_moves();
                 let (is_game_over, winner) = self.board.is_game_over();
