@@ -42,6 +42,7 @@ pub struct Board {
     game_over: bool,
     winner: Option<PieceColor>,
     castle_rights: CastleRights,
+    en_passant_target: Option<usize>,
 }
 
 #[derive(Debug)]
@@ -117,7 +118,8 @@ impl Board {
                 white_queenside: true,
                 black_kingside: true,
                 black_queenside: true,
-            }
+            },
+            en_passant_target: None,
         }
     }
 
@@ -155,6 +157,8 @@ impl Board {
             return Err("Invalid move!");
         }
 
+        let mut new_en_passant_target: Option<usize> = None;
+
         self.square[target_idx] = self.square[current_idx].take();
         if piece.piece_type == PieceType::King {
             let distance = target_idx as isize - current_idx as isize;
@@ -177,8 +181,22 @@ impl Board {
                     self.white_king_pos = target_idx;
                 }
             }
-        } else if piece.piece_type == PieceType::Pawn && (target_idx < 8 || target_idx > 55) { // Pawn Promotion
-            self.square[target_idx] = Some(Piece::new(PieceType::Queen, piece.piece_color)); // Auto promote to queen for simplicity
+        } else if piece.piece_type == PieceType::Pawn  {
+            if target_idx < 8 || target_idx > 55 { // Pawn Promotion
+                self.square[target_idx] = Some(Piece::new(PieceType::Queen, piece.piece_color)); // Auto promote to queen for MVP
+            }
+            if (target_idx as isize - current_idx as isize).abs() == 16 { // En Passant
+                new_en_passant_target = Some((current_idx + target_idx) / 2);
+            }
+            if let Some(en_passant_idx) = self.en_passant_target {
+                if target_idx == en_passant_idx {
+                    if piece.piece_color == PieceColor::White {
+                        self.square[en_passant_idx - 8] = None; // Capture the black pawn
+                    } else {
+                        self.square[en_passant_idx + 8] = None; // Capture the white pawn
+                    }
+                }
+            }
         } else if piece.piece_type == PieceType::Rook {
             // Take away castle rights if the rook moves
             match current_idx {
@@ -213,6 +231,8 @@ impl Board {
                 });
             }
         }
+
+        self.en_passant_target = new_en_passant_target;
 
         Ok(())
     }
@@ -341,8 +361,21 @@ impl Board {
                 }
             }
 
-            // Ghost Move
             let target_piece = self.square[target_idx];
+
+            let mut ep_captured_idx = None;
+            let mut ep_captured_piece = None;
+
+            if self.square[idx].unwrap().piece_type == PieceType::Pawn {
+                if let Some(ep_idx) = self.en_passant_target {
+                    if ep_idx == target_idx {
+                        ep_captured_idx = if piece_color == PieceColor::White { Some(target_idx - 8) } else { Some(target_idx + 8) };
+                        ep_captured_piece = self.square[ep_captured_idx.unwrap()].take();
+                    }
+                }
+            }
+
+            // Ghost Move
             self.square[target_idx] = self.square[idx].take();
 
             // Temporarily change king pos if its a king
@@ -363,6 +396,10 @@ impl Board {
 
             self.square[idx] = self.square[target_idx].take();
             self.square[target_idx] = target_piece;
+
+            if let Some(captured_idx) = ep_captured_idx {
+                self.square[captured_idx] = ep_captured_piece; // Restore the captured pawn in case of en passant
+            }
 
             // Restore King pos
             if white_king_moved { self.white_king_pos = idx; }
@@ -385,6 +422,10 @@ impl Board {
                 let target_idx = (8 * (r+row_step) + (c + col_step)) as usize;
                 if let Some(target_piece) = self.square[target_idx] {
                     if target_piece.piece_color != piece.piece_color { // Valid move if there's an opponent's piece
+                        result.push(target_idx);
+                    }
+                } else if let Some(en_passant_idx) = self.en_passant_target {
+                    if target_idx == en_passant_idx {
                         result.push(target_idx);
                     }
                 }
