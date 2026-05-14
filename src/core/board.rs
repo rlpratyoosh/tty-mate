@@ -41,6 +41,15 @@ pub struct Board {
     white_king_pos: usize,
     game_over: bool,
     winner: Option<PieceColor>,
+    castle_rights: CastleRights,
+}
+
+#[derive(Debug)]
+struct CastleRights {
+    white_kingside: bool,
+    white_queenside: bool,
+    black_kingside: bool,
+    black_queenside: bool,
 }
 
 #[derive(Debug)]
@@ -103,6 +112,12 @@ impl Board {
             white_king_pos: 4, // Starting position of white king
             game_over: false,
             winner: None,
+            castle_rights: CastleRights {
+                white_kingside: true,
+                white_queenside: true,
+                black_kingside: true,
+                black_queenside: true,
+            }
         }
     }
 
@@ -142,12 +157,37 @@ impl Board {
 
         self.square[target_idx] = self.square[current_idx].take();
         if piece.piece_type == PieceType::King {
+            let distance = target_idx as isize - current_idx as isize;
+            if distance == 2 {
+                self.square[current_idx + 1] = self.square[current_idx + 3].take(); // Kingside
+            } else if distance == -2 {
+                self.square[current_idx - 1] = self.square[current_idx - 4].take(); // Queenside
+            }
+
+            // Take away castle rights and update king pos if the king moves
             match piece.piece_color {
-                PieceColor::Black => self.black_king_pos = target_idx,
-                PieceColor::White => self.white_king_pos = target_idx,
+                PieceColor::Black => {
+                    self.castle_rights.black_kingside = false; 
+                    self.castle_rights.black_queenside = false;
+                    self.black_king_pos = target_idx;
+                },
+                PieceColor::White => {
+                    self.castle_rights.white_kingside = false;
+                    self.castle_rights.white_queenside = false;
+                    self.white_king_pos = target_idx;
+                }
             }
         } else if piece.piece_type == PieceType::Pawn && (target_idx < 8 || target_idx > 55) { // Pawn Promotion
             self.square[target_idx] = Some(Piece::new(PieceType::Queen, piece.piece_color)); // Auto promote to queen for simplicity
+        } else if piece.piece_type == PieceType::Rook {
+            // Take away castle rights if the rook moves
+            match current_idx {
+                0 => self.castle_rights.white_queenside = false, 
+                7 => self.castle_rights.white_kingside = false,
+                56 => self.castle_rights.black_queenside = false,
+                63 => self.castle_rights.black_kingside = false,
+                _ => {} // Do Nothing
+            }
         }
 
         // Switch turns
@@ -268,6 +308,39 @@ impl Board {
             let mut white_king_moved = false;
             let mut black_king_moved = false;
 
+            let distance = target_idx as isize - idx as isize;
+
+            if self.square[idx].unwrap().piece_type == PieceType::King && distance.abs() == 2 { // Castling Move
+                let passing_idx = if distance > 0 { idx + 1 } else { idx - 1 };
+
+                // Ghost Move the King
+                self.square[passing_idx] = self.square[idx].take();
+                if idx == self.white_king_pos { 
+                    self.white_king_pos = passing_idx;
+                    white_king_moved = true;
+                }
+                if idx == self.black_king_pos {
+                    self.black_king_pos = passing_idx;
+                    black_king_moved = true;
+                }
+
+                let passing_safe = self.is_king_in_check(piece_color)[0].is_none();
+
+                self.square[idx] = self.square[passing_idx].take(); // Move the king back to its original position
+                if white_king_moved {
+                    self.white_king_pos = idx;
+                    white_king_moved = false;
+                }
+                if black_king_moved {
+                    self.black_king_pos = idx;
+                    black_king_moved = false;
+                }
+
+                if !passing_safe {
+                    continue;
+                }
+            }
+
             // Ghost Move
             let target_piece = self.square[target_idx];
             self.square[target_idx] = self.square[idx].take();
@@ -378,6 +451,25 @@ impl Board {
         let (row, col) = Board::index_to_coordinates(idx);
         let directions = [(1,1), (-1,1), (1,-1), (-1,-1), (1, 0), (-1, 0), (0, 1), (0, -1)]; // Directions same as queen
         self.get_directional_moves(&mut result, piece, row, col, &directions, 1); // But moves only 1 step
+
+        // Check for castling
+        if !self.checked { 
+            if piece.piece_color == PieceColor::White {
+                if self.castle_rights.white_kingside && self.square[5].is_none() && self.square[6].is_none() {
+                    result.push(6);
+                }
+                if self.castle_rights.white_queenside && self.square[1].is_none() && self.square[2].is_none() && self.square[3].is_none() {
+                    result.push(2);
+                }
+            } else {
+                if self.castle_rights.black_kingside && self.square[61].is_none() && self.square[62].is_none() {
+                    result.push(62);
+                }
+                if self.castle_rights.black_queenside && self.square[57].is_none() && self.square[58].is_none() && self.square[59].is_none() {
+                    result.push(58);
+                }
+            }
+        }
         result
     }
 
