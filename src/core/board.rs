@@ -263,14 +263,22 @@ impl Board {
 
         for i in 0..possible_moves.count {
             let target_idx = possible_moves.moves[i];
+            let mut white_king_moved = false;
+            let mut black_king_moved = false;
 
             // Ghost Move
             let target_piece = self.square[target_idx];
             self.square[target_idx] = self.square[idx].take();
 
             // Temporarily change king pos if its a king
-            if idx == self.white_king_pos { self.white_king_pos = target_idx; }
-            if idx == self.black_king_pos { self.black_king_pos = target_idx; }
+            if idx == self.white_king_pos { 
+                self.white_king_pos = target_idx;
+                white_king_moved = true;
+            }
+            if idx == self.black_king_pos {
+                self.black_king_pos = target_idx;
+                black_king_moved = true;
+            }
 
             let is_safe = self.is_king_in_check(piece_color)[0].is_none();
 
@@ -282,8 +290,8 @@ impl Board {
             self.square[target_idx] = target_piece;
 
             // Restore King pos
-            if target_idx == self.white_king_pos { self.white_king_pos = idx; }
-            if target_idx == self.black_king_pos { self.black_king_pos = idx;  }
+            if white_king_moved { self.white_king_pos = idx; }
+            if black_king_moved { self.black_king_pos = idx;  }
         }
 
         Ok(valid_moves)
