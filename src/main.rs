@@ -1,7 +1,7 @@
 pub mod ui;
-use ui::game::Game;
+use ui::app::App;
 
 fn main() -> std::io::Result<()> {
-    ratatui::run(|terminal| Game::default().run(terminal))
+    ratatui::run(|terminal| App::default().run(terminal))
 }
 

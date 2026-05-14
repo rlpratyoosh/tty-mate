@@ -19,6 +19,7 @@ use ratatui::{
 };
 
 use tty_mate::core::board::{Board, MoveList, PieceColor};
+use crate::ui::app::{AppAction};
 
 
 pub struct Game {
@@ -42,31 +43,11 @@ impl Game {
         }
     }
 
-    pub fn run(&mut self, terminal: &mut DefaultTerminal) -> std::io::Result<()> {
-        while !self.exit {
-            terminal.draw(|f| self.draw(f))?;
-            self.handle_events()?;
-        }
-        Ok(())
-    }
-
-    fn draw(&self, f: &mut Frame) {
-        f.render_widget(self, f.area());
-    }
-
-    fn handle_events(&mut self) -> std::io::Result<()> {
-        match event::read()? {
-            Event::Key(key_event) if key_event.kind == KeyEventKind::Press => {
-                self.handle_key_event(key_event)
-            }
-            _ => {}
-        }
-        Ok(())
-    }
-
-    fn handle_key_event(&mut self, key_event: KeyEvent) {
+    pub fn handle_key_event(&mut self, key_event: KeyEvent) -> AppAction {
         match key_event.code {
-            KeyCode::Char('q') => self.exit(),
+            KeyCode::Char('q') => { 
+               return AppAction::QuitToMenu;
+            }
             KeyCode::Char('j') => self.hover_down(),
             KeyCode::Char('k') => self.hover_up(),
             KeyCode::Char('h') => self.hover_left(),
@@ -74,6 +55,7 @@ impl Game {
             KeyCode::Enter => self.handle_enter(),
             _ => {},
         }
+        AppAction::None
     }
 
     fn handle_enter(&mut self) {
