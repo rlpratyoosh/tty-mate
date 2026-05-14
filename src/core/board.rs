@@ -11,7 +11,7 @@ enum PieceType {
 }
 
 #[derive(Debug, Copy, Clone, PartialEq)]
-enum PieceColor {
+pub enum PieceColor {
     White,
     Black,
 }
@@ -132,7 +132,7 @@ impl Board {
 
         // Check if it's the current player's turn
         if piece.piece_color != self.current_turn {
-            return Err("It's not the current player's turn");
+            return Err("It's not your turn");
         }
 
         let valid_moves = &possible_moves.moves[0..possible_moves.count]; // Slice the moves array to get only the valid moves
@@ -234,6 +234,10 @@ impl Board {
             }
         }
         true
+    }
+
+    pub fn is_game_over(&self) -> (bool, Option<PieceColor>) {
+        (self.game_over, self.winner)
     }
 
     pub fn get_possible_moves(&self, idx: usize) -> Result<MoveList, &'static str> {

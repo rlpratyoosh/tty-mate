@@ -14,17 +14,18 @@ use ratatui::{
     style::{Style, Stylize, Color},
     layout::{Rect},
     buffer::Buffer,
-    widgets::{Block, Widget},
+    widgets::{Block, Widget, Paragraph},
     symbols::border,
 };
 
-use tty_mate::core::board::{Board, MoveList};
+use tty_mate::core::board::{Board, MoveList, PieceColor};
 
 
 pub struct Game {
     hover: usize,
     selected: Option<usize>,
     current_move_list: MoveList,
+    message: String,
     board: Board,
     exit: bool,
 }
@@ -35,6 +36,7 @@ impl Game {
             hover: 27,
             selected: None,
             current_move_list: MoveList::new(),
+            message: "Welcome to TTY-Mate!".to_string(),
             board: Board::new(),
             exit: false,
         }
@@ -75,12 +77,30 @@ impl Game {
     }
 
     fn handle_enter(&mut self) {
+        let (is_game_over, _) = self.board.is_game_over();
+        if is_game_over { return; }
         if let Some(selected) = self.selected {
             if self.current_move_list.moves[0..self.current_move_list.count].contains(&self.hover) {
-                if let Err(_) = self.board.move_piece(selected, self.hover) {
+                if let Err(e) = self.board.move_piece(selected, self.hover) {
+                    self.message = format!("Error: {}", e);
+                    self.reset_moves();
                     return;
                 }
+                let (from_r, from_c) = Board::index_to_coordinates(selected);
+                let (to_r, to_c) = Board::index_to_coordinates(self.hover);
+                self.message = format!("Moved from {}{} to {}{}", (b'a' + from_c as u8) as char, 8-from_r, (b'a' + to_c as u8) as char, 8-to_r);
                 self.reset_moves();
+                let (is_game_over, winner) = self.board.is_game_over();
+                if is_game_over {
+                    if let Some(winner) = winner {
+                        match winner {
+                            PieceColor::White => self.message = "Game Over! White wins!".to_string(),
+                            PieceColor::Black => self.message = "Game Over! Black wins!".to_string(),
+                        }
+                    } else {
+                        self.message = "Game Over! It's a draw!".to_string();
+                    }
+                }
                 return;
             }
         }
@@ -98,7 +118,11 @@ impl Game {
                 self.selected = Some(self.hover);
                 move_list
             }
-            Err(_) => return,
+            Err(e) => {
+                self.message = format!("Error: {}", e);
+                self.reset_moves();
+                return;
+            }
         };
     }
 
@@ -143,8 +167,8 @@ impl Widget for &Game {
         let cell_width = 6;
         let cell_height = 3;
 
-        let margin_x = 12;
-        let margin_y = 9;
+        let margin_x = area.width/10;
+        let margin_y = area.height/6;
 
         for r in 0..8 {
             for c in 0..8 {
@@ -194,5 +218,16 @@ impl Widget for &Game {
                 }
             }
         }
+
+        let message_area = Rect {
+            x: area.x,
+            y: area.y + area.height - margin_y*3/2,
+            width: area.width/2,
+            height: 3,
+        };
+
+        Paragraph::new(self.message.as_str())
+            .alignment(ratatui::layout::Alignment::Center)
+            .render(message_area, buf);
     }
 }
