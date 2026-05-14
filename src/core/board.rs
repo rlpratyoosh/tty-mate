@@ -146,6 +146,8 @@ impl Board {
                 PieceColor::Black => self.black_king_pos = target_idx,
                 PieceColor::White => self.white_king_pos = target_idx,
             }
+        } else if piece.piece_type == PieceType::Pawn && (target_idx < 8 || target_idx > 55) { // Pawn Promotion
+            self.square[target_idx] = Some(Piece::new(PieceType::Queen, piece.piece_color)); // Auto promote to queen for simplicity
         }
 
         // Switch turns
