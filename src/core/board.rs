@@ -39,6 +39,8 @@ pub struct Board {
     checkers: [Option<usize>; 2], // Max 2 pieces can check the king at once
     black_king_pos: usize,
     white_king_pos: usize,
+    game_over: bool,
+    winner: Option<PieceColor>,
 }
 
 #[derive(Debug)]
@@ -99,6 +101,8 @@ impl Board {
             checkers: [None; 2],
             black_king_pos: 60, // Starting position of black king
             white_king_pos: 4, // Starting position of white king
+            game_over: false,
+            winner: None,
         }
     }
 
@@ -120,6 +124,9 @@ impl Board {
     }
 
     pub fn move_piece(&mut self, current_idx: usize, target_idx: usize) -> Result<(), &'static str> {
+        if self.game_over {
+            return Err("Game is already over");
+        }
         let possible_moves = self.get_valid_moves(current_idx)?; // Also checks if there's a piece at current_idx
         let piece = self.square[current_idx].unwrap(); // Safe to unwrap since we just checked it
 
@@ -154,6 +161,16 @@ impl Board {
             self.checked = true;
         }
         self.checkers = checkers;
+
+        if self.check_game_over() {
+            self.game_over = true;
+            if self.checked {
+                self.winner = Some(match self.current_turn {
+                    PieceColor::White => PieceColor::Black,
+                    PieceColor::Black => PieceColor::White,
+                });
+            }
+        }
 
         Ok(())
     }
@@ -203,6 +220,20 @@ impl Board {
             }
         }
         return false;
+    }
+
+    fn check_game_over(&mut self) -> bool {
+        for idx in 0..64 {
+            if let Some(piece) = self.square[idx] {
+                if piece.piece_color == self.current_turn {
+                    if let Ok(valid_moves) = self.get_valid_moves(idx) {
+                        if valid_moves.count > 0 {
+                            return false;                        }
+                    }
+                }
+            }
+        }
+        true
     }
 
     pub fn get_possible_moves(&self, idx: usize) -> Result<MoveList, &'static str> {
