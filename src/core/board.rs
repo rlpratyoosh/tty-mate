@@ -426,7 +426,11 @@ impl Board {
                     }
                 } else if let Some(en_passant_idx) = self.en_passant_target {
                     if target_idx == en_passant_idx {
-                        result.push(target_idx);
+                        if let Some(target_piece) = self.square[if piece.piece_color == PieceColor::White { en_passant_idx - 8 } else { en_passant_idx + 8 }] {
+                            if target_piece.piece_color != piece.piece_color && target_piece.piece_type == PieceType::Pawn {
+                                result.push(target_idx);
+                            }
+                        }
                     }
                 }
             }
