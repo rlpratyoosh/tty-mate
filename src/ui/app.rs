@@ -9,9 +9,7 @@ use crossterm::{
 };
 use ratatui::{
     DefaultTerminal,
-    buffer::Buffer,
-    layout::Rect,
-    widgets::{Block, Widget},
+    widgets::{Block},
     symbols::border,
     Frame,
 };

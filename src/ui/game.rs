@@ -1,15 +1,10 @@
 use crossterm::{
     event::{
-        self,
         KeyCode,
-        KeyEventKind,
         KeyEvent,
-        Event,
     }
 };
 use ratatui::{
-    DefaultTerminal,
-    Frame,
     text::{Line},
     style::{Style, Stylize, Color},
     layout::{Rect},
@@ -28,7 +23,6 @@ pub struct Game {
     current_move_list: MoveList,
     message: String,
     board: Board,
-    exit: bool,
 }
 
 impl Game {
@@ -39,7 +33,6 @@ impl Game {
             current_move_list: MoveList::new(),
             message: "Welcome to TTY-Mate!".to_string(),
             board: Board::new(),
-            exit: false,
         }
     }
 
@@ -132,10 +125,6 @@ impl Game {
         let (row, col) = Board::index_to_coordinates(self.hover);
         let col = if col == 0 { 7 } else { col-1 };
         self.hover = 8 * row + col;
-    }
-
-    fn exit(&mut self) {
-        self.exit = true;
     }
 }
 
