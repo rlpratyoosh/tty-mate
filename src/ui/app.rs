@@ -1,7 +1,6 @@
 use crossterm::{
     event::{
         self,
-        KeyCode,
         KeyEventKind,
         KeyEvent,
         Event,
@@ -9,15 +8,17 @@ use crossterm::{
 };
 use ratatui::{
     DefaultTerminal,
-    widgets::{Block},
-    symbols::border,
     Frame,
 };
 
-use crate::ui::game::Game;
+use crate::ui::{
+    game::Game,
+    menu::Menu,
+};
 
 pub struct App {
     game: Game,
+    menu: Menu,
     app_state: AppState,
     exit: bool,
 }
@@ -38,6 +39,7 @@ impl App {
     pub fn default() -> Self {
         App {
             game: Game::default(),
+            menu: Menu::default(),
             app_state: AppState::Menu,
             exit: false,
         }
@@ -53,12 +55,7 @@ impl App {
 
     fn draw(&self, f: &mut Frame) {
         match self.app_state {
-            AppState::Menu => {
-                let block = Block::bordered()
-                    .title("Main Menu")
-                    .border_set(border::THICK);
-                f.render_widget(block, f.area());
-            },
+            AppState::Menu => f.render_widget(&self.menu, f.area()),
             AppState::Game => f.render_widget(&self.game, f.area()),
         }
     }
@@ -75,11 +72,7 @@ impl App {
 
     fn handle_key_event(&mut self, key_event: KeyEvent) {
         let action = match self.app_state {
-            AppState::Menu => match key_event.code {
-                KeyCode::Char('q') => AppAction::Exit,
-                KeyCode::Enter => AppAction::StartGame,
-                _ => AppAction::None,
-            },
+            AppState::Menu => self.menu.handle_key_event(key_event),
             AppState::Game => self.game.handle_key_event(key_event),
         };
 
