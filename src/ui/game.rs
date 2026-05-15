@@ -10,7 +10,6 @@ use ratatui::{
     layout::{Rect, Layout, Direction, Constraint, Alignment},
     buffer::Buffer,
     widgets::{Widget, Paragraph, Block},
-    symbols::border,
 };
 
 use tty_mate::core::board::{Board, MoveList, PieceColor};
@@ -139,17 +138,11 @@ impl Game {
 
 impl Widget for &Game {
     fn render(self, area: Rect, buf: &mut Buffer) {
-        let block = Block::bordered()
-            .title(" Game ")
-            .border_set(border::THICK);
-
-        let inner_area = block.inner(area);
-        block.render(area, buf);
 
         let vertical_center = Layout::default()
             .direction(Direction::Vertical)
             .constraints([Constraint::Min(0), Constraint::Length(28), Constraint::Min(0)])
-            .split(inner_area);
+            .split(area);
 
         let horizontal_center = Layout::default()
             .direction(Direction::Horizontal)

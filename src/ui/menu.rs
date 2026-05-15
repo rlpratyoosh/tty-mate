@@ -4,8 +4,7 @@ use ratatui::{
     layout::{Alignment, Constraint, Direction, Layout, Rect},
     style::{Color, Style},
     text::{Line, Span},
-    widgets::{Block, Paragraph, Widget},
-    symbols::border,
+    widgets::{Paragraph, Widget},
 };
 
 use crate::ui::app::AppAction;
@@ -47,13 +46,6 @@ impl Menu {
 
 impl Widget for &Menu {
     fn render(self, area: Rect, buf: &mut Buffer) {
-        let block = Block::bordered()
-            .title(" Menu ")
-            .border_set(border::THICK);
-
-        let inner_area = block.inner(area);
-        block.render(area, buf);
-
         let vertical_chunks = Layout::default()
             .direction(Direction::Vertical)
             .constraints([
@@ -64,7 +56,7 @@ impl Widget for &Menu {
                 Constraint::Length(2),    // Quit Button space
                 Constraint::Min(0),       // Bottom spring
             ])
-            .split(inner_area);
+            .split(area);
 
         let logo_lines = vec![
 r#" _____ _____ ___  _      _      ____ _____ _____"#,
