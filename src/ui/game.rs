@@ -17,6 +17,7 @@ use crate::ui::app::{AppAction};
 
 pub struct Game {
     hover: usize,
+    old_hover: usize,
     selected: Option<usize>,
     current_move_list: MoveList,
     message: String,
@@ -28,7 +29,8 @@ pub struct Game {
 impl Game {
     pub fn default() -> Self {
         Game {
-            hover: 27,
+            hover: 11, // Start with white's hover
+            old_hover: 51, // Black's hover
             selected: None,
             current_move_list: MoveList::new(),
             message: "Welcome to TTY-Mate!".to_string(),
@@ -89,6 +91,11 @@ impl Game {
                         self.message = "STALEMATE! It's a draw!".to_string();
                     }
                 }
+
+                // Flip hovers
+                let temp = self.hover;
+                self.hover = self.old_hover;
+                self.old_hover = temp;
                 return;
             }
         }
@@ -116,12 +123,22 @@ impl Game {
 
     fn hover_up(&mut self) {
         let (row, col) = Board::index_to_coordinates(self.hover);
-        let row = if row == 7 { 0 } else { row+1 };
+        let current_turn = self.board.get_current_turn();
+        let row = if current_turn == PieceColor::White {
+            if row == 7 { 0 } else { row+1 }
+        } else {
+            if row == 0 { 7 } else { row-1 }
+        };
         self.hover = 8 * row + col;
     }
     fn hover_down(&mut self) {
         let (row, col) = Board::index_to_coordinates(self.hover);
-        let row = if row == 0 { 7 } else { row-1 };
+        let current_turn = self.board.get_current_turn();
+        let row = if current_turn == PieceColor::White {
+            if row == 0 { 7 } else { row-1 }
+        } else {
+            if row == 7 { 0 } else { row+1 }
+        };
         self.hover = 8 * row + col;
     }
     fn hover_right(&mut self) {
@@ -177,7 +194,12 @@ impl Widget for &Game {
         for r in 0..8 {
             for c in 0..8 {
                 let light_color = (r+c) % 2 == 0;
-                let idx = (8 * (7-r) + c) as usize;
+                let current_turn = self.board.get_current_turn();
+                let idx = if current_turn == PieceColor::White {
+                    (8 * (7-r) + c) as usize
+                } else {
+                    (8 * r + c) as usize
+                };
                 let mut bg_color = if idx == self.hover {
                     Color::Rgb(255, 180, 50)
                 } else if self.current_move_list.moves[0..self.current_move_list.count].contains(&idx) {

@@ -302,6 +302,10 @@ impl Board {
         (self.game_over, self.winner)
     }
 
+    pub fn get_current_turn(&self) -> PieceColor {
+        self.current_turn
+    }
+
     pub fn get_possible_moves(&self, idx: usize) -> Result<MoveList, &'static str> {
         // Check if there's a piece at the given index
         let Some(piece) = self.square[idx] else {
