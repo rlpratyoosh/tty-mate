@@ -11,6 +11,12 @@ A minimal, terminal-based chess game written in Rust.
 
 **tty-mate** lets you play local two-player chess directly in your terminal. It uses a clean interface built with `ratatui` and focuses on just playing the game without distractions.
 
+## Screenshots
+
+|                  Menu                  |                Board                 |
+| :--------------------------------------------: | :--------------------------------------: |
+| ![Landing Page](screenshots/chess-menu.png) | ![Game Menu](screenshots/chess-board.png) |
+
 ## Features
 
 * **Full FIDE Rule Enforcement:** The engine correctly handles standard piece movement, Check, Checkmate, Stalemate, Castling, and En Passant.
