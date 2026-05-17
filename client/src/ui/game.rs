@@ -12,7 +12,7 @@ use ratatui::{
     widgets::{Widget, Paragraph, Block},
 };
 
-use tty_mate::core::board::{Board, MoveList, PieceColor};
+use tty_mate_core::board::{Board, MoveList, PieceColor};
 use crate::ui::app::{AppAction};
 
 pub struct Game {

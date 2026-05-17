@@ -1379,12 +1379,17 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7694e1cfe791f8d31026952abf09c69ca6f6fa4e1a1229e18988f06a04a12dca"
 
 [[package]]
-name = "tty-mate"
+name = "tty-mate-client"
 version = "0.1.0"
 dependencies = [
  "crossterm",
  "ratatui",
+ "tty-mate-core",
 ]
+
+[[package]]
+name = "tty-mate-core"
+version = "0.1.0"
 
 [[package]]
 name = "typenum"
