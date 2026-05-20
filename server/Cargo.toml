@@ -1,0 +1,8 @@
+[package]
+name = "tty-mate-server"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+tty-mate-core = { path = "../core" }
+tokio = { version = "1.52", features = ["rt-multi-thread", "net", "sync", "io-util", "macros"] }
