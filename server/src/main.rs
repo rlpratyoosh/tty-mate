@@ -1,12 +1,14 @@
-use tty_mate_core::board::{Board, PieceType, PieceColor};
-use std::collections::{HashMap, VecDeque};
-use std::sync::Arc;
-use std::io;
-use tokio::sync::{mpsc, Mutex};
-use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
-use tokio::net::{TcpListener, TcpStream};
-use tokio::task;
-use tty_mate_server::{handle_client, Server, Game, Player};
+use std::{
+    io,
+    sync::Arc,
+    collections::{HashMap, VecDeque},
+};
+use tokio::{
+    sync::Mutex,
+    net::{TcpListener},
+    task,
+};
+use tty_mate_server::{handle_client, Server};
 
 
 #[tokio::main]

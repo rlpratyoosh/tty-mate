@@ -1,11 +1,18 @@
-use tty_mate_core::board::{Board, PieceType, PieceColor};
-use std::collections::{HashMap, VecDeque};
-use std::sync::Arc;
-use std::io;
-use tokio::sync::{mpsc, Mutex};
-use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
-use tokio::net::{TcpListener, TcpStream};
-use tty_mate_api::{ClientMessage, ServerMessage, GameError, parse_client_message, convert_error_to_message, server_message_to_string};
+use tty_mate_core::board::{Board, PieceColor};
+use std::{
+    collections::{HashMap, VecDeque},
+    sync::Arc,
+};
+use tokio::{
+    sync::{mpsc, Mutex},
+    io::{AsyncBufReadExt, AsyncWriteExt, BufReader},
+    net::{TcpStream},
+};
+use tty_mate_api::{
+    ClientMessage,
+    ServerMessage,
+    GameError,
+};
 
 pub struct Player {
     id: usize,
@@ -30,7 +37,6 @@ pub async fn handle_client(server: Arc<Mutex<Server>>, mut socket: TcpStream) {
     let (tx, mut rx) = mpsc::unbounded_channel();
 
     let player_id: usize;
-    let mut game_id: Option<usize> = None;
     let mut game: Option<Arc<Mutex<Game>>> = None;
 
     {
@@ -76,21 +82,21 @@ pub async fn handle_client(server: Arc<Mutex<Server>>, mut socket: TcpStream) {
                     break;
                 };
 
-                let client_message = parse_client_message(&line);
+                let client_message = ClientMessage::parse(&line);
 
                 match client_message {
                     Ok(ClientMessage::Move { from, to, piece_type }) => {
                         let game = match game.as_ref() {
                             Some(game) => game,
                             None => {
-                                let msg = convert_error_to_message(GameError::NoGameFound);
+                                let msg = (GameError::NoGameFound).to_string();
                                 let _ = tcp_writer.write_all(msg.as_bytes()).await;
                                 continue;
                             },
                         };
                         let mut game_lock = game.lock().await;
                         if let Err(_) = game_lock.board.move_piece(from, to) {
-                            let msg = convert_error_to_message(GameError::InvalidMove);
+                            let msg = (GameError::InvalidMove).to_string();
                             let _ = tcp_writer.write_all(msg.as_bytes()).await;
                             continue;
                         }
@@ -104,14 +110,14 @@ pub async fn handle_client(server: Arc<Mutex<Server>>, mut socket: TcpStream) {
                         }
                     },
                     Err(e) => {
-                        let _ = tcp_writer.write_all(convert_error_to_message(e).as_bytes()).await;
+                        let _ = tcp_writer.write_all(e.to_string().as_bytes()).await;
                     }
                 }
             }
 
             Some(message) = rx.recv() => {
                 match message {
-                    ServerMessage::GameStart { game_id: new_game_id, color } => {
+                    ServerMessage::GameStart { game_id: new_game_id, color: _ } => {
                         let server_lock = server.lock().await;
 
                         let try_game = server_lock.active_games.get(&new_game_id);
@@ -124,16 +130,14 @@ pub async fn handle_client(server: Arc<Mutex<Server>>, mut socket: TcpStream) {
                         };
 
                         game = Some(Arc::clone(&new_game));
-                        game_id = Some(new_game_id);
 
-                        let message = server_message_to_string(message);
+                        let message = (message).to_string();
                         let _ = tcp_writer.write_all(message.as_bytes()).await;
                     },
-                    ServerMessage::Move { from, to, piece_type } => {
-                        let message = server_message_to_string(message);
+                    ServerMessage::Move { from: _, to: _, piece_type: _ } => {
+                        let message = (message).to_string();
                         let _ = tcp_writer.write_all(message.as_bytes()).await;
                     },
-                    _ => {},
                 }
             }
         }
