@@ -86,7 +86,7 @@ pub async fn handle_client(server: Arc<Mutex<Server>>, mut socket: TcpStream) {
         tokio::select! {
             result = tcp_reader.next_line() => {
                 let Ok(Some(line)) = result else {
-                    Log::error(&format!("Player {} disconnected", player_id));
+                    Log::info(&format!("Player {} disconnected", player_id));
                     break;
                 };
 
