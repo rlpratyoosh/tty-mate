@@ -40,7 +40,9 @@ pub async fn handle_client(server: Arc<Mutex<Server>>, mut socket: TcpStream) {
     let (tx, mut rx) = mpsc::unbounded_channel();
 
     let player_id: usize;
+    let mut game_id: Option<usize> = None;
     let mut game: Option<Arc<Mutex<Game>>> = None;
+    let mut player_color: Option<PieceColor> = None;
 
     {
         let mut server = server.lock().await;
@@ -104,12 +106,8 @@ pub async fn handle_client(server: Arc<Mutex<Server>>, mut socket: TcpStream) {
                             },
                         };
                         let mut game_lock = game.lock().await;
-                        let expected_id = match game_lock.board.get_current_turn() {
-                            PieceColor::White => game_lock.white.id,
-                            PieceColor::Black => game_lock.black.id,
-                        };
 
-                        if expected_id != player_id {
+                        if player_color != Some(game_lock.board.get_current_turn()) {
                             let msg = (GameError::InvalidMove).to_string();
                             Log::error(&format!("Player {} attempted to move out of turn", player_id));
                             let _ = tcp_writer.write_all(msg.as_bytes()).await;
@@ -153,6 +151,12 @@ pub async fn handle_client(server: Arc<Mutex<Server>>, mut socket: TcpStream) {
                         };
 
                         game = Some(Arc::clone(&new_game));
+                        game_id = Some(new_game_id);
+                        player_color = if game.as_ref().unwrap().lock().await.white.id == player_id {
+                            Some(PieceColor::White)
+                        } else {
+                            Some(PieceColor::Black)
+                        };
 
                         let message = (message).to_string();
                         let _ = tcp_writer.write_all(message.as_bytes()).await;
@@ -161,8 +165,29 @@ pub async fn handle_client(server: Arc<Mutex<Server>>, mut socket: TcpStream) {
                         let message = (message).to_string();
                         let _ = tcp_writer.write_all(message.as_bytes()).await;
                     },
+                    ServerMessage::GameAborted => {
+                        let message = (message).to_string();
+                        let _ = tcp_writer.write_all(message.as_bytes()).await;
+                    }
                 }
             }
         }
+    }
+
+    Log::info(&format!("Cleaning up state for Player {}", player_id));
+    let mut server_state = server.lock().await;
+
+    if let Some(active_game_id) = game_id {
+        let game_lock = game.as_ref().unwrap().lock().await;
+        match player_color {
+            Some(PieceColor::Black) => { let _ = game_lock.white.tx.send(ServerMessage::GameAborted); },
+            Some(PieceColor::White) => { let _ = game_lock.black.tx.send(ServerMessage::GameAborted); },
+            _ => {},
+        };
+        server_state.active_games.remove(&active_game_id);
+        Log::info(&format!("Game {} aborted due to Player {} disconnecting.", active_game_id, player_id));
+    } else {
+        server_state.matchmaking_queue.pop_front(); 
+        Log::info(&format!("Removed Player {} from the matchmaking queue.", player_id));
     }
 }

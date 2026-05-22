@@ -7,6 +7,7 @@ pub enum ClientMessage {
 pub enum ServerMessage {
     GameStart { game_id: usize, color: PieceColor },
     Move { from: usize, to: usize, piece_type: Option<PieceType> },
+    GameAborted,
 }
 
 pub enum GameError {
@@ -70,6 +71,9 @@ impl ServerMessage {
                 };
                 ServerMessage::Move { from, to, piece_type }
             },
+            "a" => {
+                ServerMessage::GameAborted
+            },
             _ => {
                 return Err(GameError::InvalidMessage);
             },
@@ -99,6 +103,9 @@ impl ServerMessage {
                     None => format!("m:{}:{}\n", from, to)
                 }
             },
+            ServerMessage::GameAborted => {
+                "a".to_string()
+            }
         }
     }
 }
