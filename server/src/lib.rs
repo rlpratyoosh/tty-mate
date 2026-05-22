@@ -104,6 +104,18 @@ pub async fn handle_client(server: Arc<Mutex<Server>>, mut socket: TcpStream) {
                             },
                         };
                         let mut game_lock = game.lock().await;
+                        let expected_id = match game_lock.board.get_current_turn() {
+                            PieceColor::White => game_lock.white.id,
+                            PieceColor::Black => game_lock.black.id,
+                        };
+
+                        if expected_id != player_id {
+                            let msg = (GameError::InvalidMove).to_string();
+                            Log::error(&format!("Player {} attempted to move out of turn", player_id));
+                            let _ = tcp_writer.write_all(msg.as_bytes()).await;
+                            continue;
+                        }
+
                         if let Err(_) = game_lock.board.move_piece(from, to) {
                             let msg = (GameError::InvalidMove).to_string();
                             Log::error(&format!("Player {} attempted an invalid move from {:?} to {:?}", player_id, from, to));
