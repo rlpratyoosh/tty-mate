@@ -1,0 +1,7 @@
+[package]
+name = "tty-mate-api"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+tty-mate-core = { path = "../core" }

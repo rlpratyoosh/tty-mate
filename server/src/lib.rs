@@ -5,6 +5,7 @@ use std::io;
 use tokio::sync::{mpsc, Mutex};
 use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
 use tokio::net::{TcpListener, TcpStream};
+use tty_mate_api::{ClientMessage, ServerMessage, GameError, parse_client_message, convert_error_to_message, server_message_to_string};
 
 pub struct Player {
     id: usize,
@@ -23,15 +24,6 @@ pub struct Server {
     pub next_game_id: usize,
     pub matchmaking_queue: VecDeque<Player>,
     pub active_games: HashMap<usize, Arc<Mutex<Game>>>,
-}
-
-enum ClientMessage {
-    Move { from: usize, to: usize, piece_type: Option<PieceType>},
-}
-
-enum ServerMessage {
-    GameStart { game_id: usize, color: PieceColor },
-    Move { from: usize, to: usize, piece: PieceType },
 }
 
 pub async fn handle_client(server: Arc<Mutex<Server>>, mut socket: TcpStream) {
@@ -65,11 +57,10 @@ pub async fn handle_client(server: Arc<Mutex<Server>>, mut socket: TcpStream) {
             let new_game = Arc::new(Mutex::new(new_game));
 
             server.active_games.insert(next_game_id, Arc::clone(&new_game));
-            game = Some(new_game);
-            game_id = Some(next_game_id);
 
-            let game_lock = game.as_ref().unwrap().lock().await;
+            let game_lock = new_game.lock().await;
             let _ = game_lock.white.tx.send(ServerMessage::GameStart { game_id: next_game_id, color: PieceColor::White });
+            let _ = game_lock.black.tx.send(ServerMessage::GameStart { game_id: next_game_id, color: PieceColor::Black });
         } else {
             server.matchmaking_queue.push_back(player);
         }
@@ -84,58 +75,37 @@ pub async fn handle_client(server: Arc<Mutex<Server>>, mut socket: TcpStream) {
                 let Ok(Some(line)) = result else {
                     break;
                 };
-                let tokens: Vec<&str> = line.split(":").collect();
-                let Some(mode) = tokens.get(0) else {
-                    tcp_writer.write_all(b"e:Invalid command format\n").await.unwrap_or(());
-                    continue;
-                };
-                let client_message = match *mode {
-                    "m" => {
-                        let Some(from) = tokens.get(1).and_then(|t| t.parse::<usize>().ok()) else { 
-                            let _ = tcp_writer.write_all(b"e:Invalid command format\n").await;
-                            continue; 
-                        };
-                        let Some(to) = tokens.get(2).and_then(|t| t.parse::<usize>().ok()) else { 
-                            let _ = tcp_writer.write_all(b"e:Invalid command format\n").await;
-                            continue; 
-                        };
-                        let piece_type: Option<PieceType> = match tokens.get(3) {
-                            Some(char) => {
-                                match char.to_lowercase().as_str() {
-                                    "q" => Some(PieceType::Queen),
-                                    "n" => Some(PieceType::Knight),
-                                    "b" => Some(PieceType::Bishop),
-                                    "r" => Some(PieceType::Rook),
-                                    _ => {
-                                        let _ = tcp_writer.write_all(b"e:Invalid command format\n").await;
-                                        continue; 
-                                    },
-                                }
-                            },
-                            None => None,
-                        };
-                        ClientMessage::Move { from, to, piece_type }
-                    },
-                    _ => {
-                        tcp_writer.write_all(b"e:Invalid command format\n").await.unwrap_or(());
-                        continue;
-                    },
-                };
+
+                let client_message = parse_client_message(&line);
 
                 match client_message {
-                    ClientMessage::Move { from, to, piece_type } => {
+                    Ok(ClientMessage::Move { from, to, piece_type }) => {
                         let game = match game.as_ref() {
                             Some(game) => game,
                             None => {
-                                tcp_writer.write_all(b"e:No game found\n").await.unwrap_or(());
+                                let msg = convert_error_to_message(GameError::NoGameFound);
+                                let _ = tcp_writer.write_all(msg.as_bytes()).await;
                                 continue;
-                            }
+                            },
                         };
                         let mut game_lock = game.lock().await;
                         if let Err(_) = game_lock.board.move_piece(from, to) {
-                            tcp_writer.write_all(b"e:Invalid Move\n").await.unwrap_or(());
+                            let msg = convert_error_to_message(GameError::InvalidMove);
+                            let _ = tcp_writer.write_all(msg.as_bytes()).await;
+                            continue;
+                        }
+                        match game_lock.board.get_current_turn() {
+                            PieceColor::White => {
+                                let _ = game_lock.white.tx.send(ServerMessage::Move { from, to, piece_type });
+                            },
+                            PieceColor::Black => {
+                                let _ = game_lock.black.tx.send(ServerMessage::Move { from, to, piece_type });
+                            }
                         }
                     },
+                    Err(e) => {
+                        let _ = tcp_writer.write_all(convert_error_to_message(e).as_bytes()).await;
+                    }
                 }
             }
 
@@ -156,8 +126,11 @@ pub async fn handle_client(server: Arc<Mutex<Server>>, mut socket: TcpStream) {
                         game = Some(Arc::clone(&new_game));
                         game_id = Some(new_game_id);
 
-                        let piece_color = if color == PieceColor::White { "w" } else { "b" };
-                        let message = format!("g:{}:{}\n", new_game_id, piece_color);
+                        let message = server_message_to_string(message);
+                        let _ = tcp_writer.write_all(message.as_bytes()).await;
+                    },
+                    ServerMessage::Move { from, to, piece_type } => {
+                        let message = server_message_to_string(message);
                         let _ = tcp_writer.write_all(message.as_bytes()).await;
                     },
                     _ => {},
