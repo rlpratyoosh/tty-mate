@@ -1,3 +1,5 @@
+mod log;
+
 use tty_mate_core::board::{Board, PieceColor};
 use std::{
     collections::{HashMap, VecDeque},
@@ -13,6 +15,7 @@ use tty_mate_api::{
     ServerMessage,
     GameError,
 };
+use log::Log;
 
 pub struct Player {
     id: usize,
@@ -49,6 +52,8 @@ pub async fn handle_client(server: Arc<Mutex<Server>>, mut socket: TcpStream) {
             tx,
         };
 
+        Log::info(&format!("Player {} connected", player_id));
+
         if let Some(opponent) = server.matchmaking_queue.pop_front() {
             let next_game_id = server.next_game_id;
             server.next_game_id += 1;
@@ -61,14 +66,16 @@ pub async fn handle_client(server: Arc<Mutex<Server>>, mut socket: TcpStream) {
             };
 
             let new_game = Arc::new(Mutex::new(new_game));
-
             server.active_games.insert(next_game_id, Arc::clone(&new_game));
 
             let game_lock = new_game.lock().await;
+            Log::info(format!("New game created with ID {} between Player {} (White) and Player {} (Black)", game_lock.id, game_lock.white.id, game_lock.black.id).as_str());
+
             let _ = game_lock.white.tx.send(ServerMessage::GameStart { game_id: next_game_id, color: PieceColor::White });
             let _ = game_lock.black.tx.send(ServerMessage::GameStart { game_id: next_game_id, color: PieceColor::Black });
         } else {
             server.matchmaking_queue.push_back(player);
+            Log::info(&format!("Player {} added to matchmaking queue", player_id));
         }
     }
 
@@ -79,6 +86,7 @@ pub async fn handle_client(server: Arc<Mutex<Server>>, mut socket: TcpStream) {
         tokio::select! {
             result = tcp_reader.next_line() => {
                 let Ok(Some(line)) = result else {
+                    Log::error(&format!("Player {} disconnected", player_id));
                     break;
                 };
 
@@ -90,6 +98,7 @@ pub async fn handle_client(server: Arc<Mutex<Server>>, mut socket: TcpStream) {
                             Some(game) => game,
                             None => {
                                 let msg = (GameError::NoGameFound).to_string();
+                                Log::error(&format!("Player {} attempted to move without being in a game", player_id));
                                 let _ = tcp_writer.write_all(msg.as_bytes()).await;
                                 continue;
                             },
@@ -97,9 +106,11 @@ pub async fn handle_client(server: Arc<Mutex<Server>>, mut socket: TcpStream) {
                         let mut game_lock = game.lock().await;
                         if let Err(_) = game_lock.board.move_piece(from, to) {
                             let msg = (GameError::InvalidMove).to_string();
+                            Log::error(&format!("Player {} attempted an invalid move from {:?} to {:?}", player_id, from, to));
                             let _ = tcp_writer.write_all(msg.as_bytes()).await;
                             continue;
                         }
+                        Log::info(&format!("Player {} moved from {:?} to {:?}", player_id, from, to));
                         match game_lock.board.get_current_turn() {
                             PieceColor::White => {
                                 let _ = game_lock.white.tx.send(ServerMessage::Move { from, to, piece_type });
@@ -124,7 +135,7 @@ pub async fn handle_client(server: Arc<Mutex<Server>>, mut socket: TcpStream) {
                         let new_game = match try_game.as_ref() {
                             Some(game) => game,
                             None => {
-                                println!("Game not found");
+                                Log::error(&format!("Game with ID {} not found for Player {}", new_game_id, player_id));
                                 continue;
                             }
                         };
