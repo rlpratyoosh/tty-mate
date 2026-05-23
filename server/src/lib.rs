@@ -188,8 +188,9 @@ pub async fn handle_client(server: Arc<Mutex<Server>>, mut socket: TcpStream) {
             Some(PieceColor::White) => { let _ = game_lock.black.tx.send(ServerMessage::GameAborted); },
             _ => {},
         };
-        server_state.active_games.remove(&active_game_id);
-        Log::info(&format!("Game {} aborted due to Player {} disconnecting.", active_game_id, player_id));
+        if server_state.active_games.remove(&active_game_id).is_some() {
+            Log::info(&format!("Game {} aborted due to Player {} disconnecting.", active_game_id, player_id));
+        }
     } else {
         server_state.matchmaking_queue.pop_front(); 
         Log::info(&format!("Removed Player {} from the matchmaking queue.", player_id));

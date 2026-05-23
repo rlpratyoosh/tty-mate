@@ -18,6 +18,28 @@ pub enum GameError {
 }
 
 impl GameError {
+    pub fn parse(message: &str) -> Result<GameError, GameError> {
+        let tokens: Vec<&str> = message.split(":").collect();
+        let Some(mode) = tokens.get(0) else {
+            return Err(GameError::InvalidMessage);
+        };
+        let game_error = match *mode {
+            "e" => {
+                let Some(error_code) = tokens.get(1) else { 
+                    return Err(GameError::InvalidMessage);
+                };
+                match *error_code {
+                    "i" => GameError::InvalidMessage,
+                    "n" => GameError::NoGameFound,
+                    "m" => GameError::InvalidMove,
+                    _ => return Err(GameError::InvalidMessage),
+                }
+            },
+            _ => return Err(GameError::InvalidMessage),
+        };
+        Ok(game_error)
+    }
+
     pub fn to_string(&self) -> String {
         match self {
             GameError::InvalidMessage => "e:i\n".to_string(),
@@ -105,7 +127,7 @@ impl ServerMessage {
                 }
             },
             ServerMessage::GameAborted => {
-                "a".to_string()
+                "a\n".to_string()
             }
         }
     }
