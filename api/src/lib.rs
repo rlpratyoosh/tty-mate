@@ -2,6 +2,7 @@ use tty_mate_core::board::{PieceColor, PieceType};
 
 pub enum ClientMessage {
     Move { from: usize, to: usize, piece_type: Option<PieceType>},
+    Quit,
 }
 
 pub enum ServerMessage {
@@ -140,6 +141,7 @@ impl ClientMessage {
                 };
                 ClientMessage::Move { from, to, piece_type }
             },
+            "q" => ClientMessage::Quit,
             _ => {
                 return Err(GameError::InvalidMessage);
             },
@@ -161,6 +163,9 @@ impl ClientMessage {
                     Some(piece_str) => format!("m:{}:{}:{}\n", from, to, piece_str),
                     None => format!("m:{}:{}\n", from, to)
                 }
+            },
+            ClientMessage::Quit => {
+                "q\n".to_string()
             },
         }
     }

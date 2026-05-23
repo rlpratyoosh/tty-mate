@@ -130,6 +130,10 @@ pub async fn handle_client(server: Arc<Mutex<Server>>, mut socket: TcpStream) {
                             }
                         }
                     },
+                    Ok(ClientMessage::Quit) => {
+                        Log::info(&format!("Player {} quit the game", player_id));
+                        break;
+                    },
                     Err(e) => {
                         let _ = tcp_writer.write_all(e.to_string().as_bytes()).await;
                     }
