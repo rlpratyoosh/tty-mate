@@ -7,3 +7,5 @@ edition = "2024"
 crossterm = "0.29.0"
 ratatui = "0.30.0"
 tty-mate-core = { path = "../core" }
+tty-mate-api = { path = "../api" }
+tokio = { version = "1.52", features = ["rt-multi-thread", "net", "sync", "io-util", "macros"] }

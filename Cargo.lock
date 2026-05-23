@@ -1433,6 +1433,8 @@ version = "0.1.0"
 dependencies = [
  "crossterm",
  "ratatui",
+ "tokio",
+ "tty-mate-api",
  "tty-mate-core",
 ]
 

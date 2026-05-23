@@ -22,7 +22,7 @@ impl Menu {
         match key_event.code {
             KeyCode::Char('q') => return AppAction::Exit,
             KeyCode::Char('j') | KeyCode::Down => {
-                if self.hover < 1 {
+                if self.hover < 2 {
                     self.hover += 1;
                 }
             }
@@ -34,6 +34,8 @@ impl Menu {
             KeyCode::Enter => {
                 if self.hover == 0 {
                     return AppAction::StartGame;
+                } else if self.hover == 1 {
+                    return AppAction::StartMultiplayer;
                 } else {
                     return AppAction::Exit;
                 }
@@ -53,6 +55,7 @@ impl Widget for &Menu {
                 Constraint::Length(7),    // ASCII Logo space
                 Constraint::Length(2),    // Padding
                 Constraint::Length(2),    // Start Button space
+                Constraint::Length(2),    // Start Multiplayer Button spac
                 Constraint::Length(2),    // Quit Button space
                 Constraint::Min(0),       // Bottom spring
             ])
@@ -85,7 +88,14 @@ r#"  \_/   \_/  /_/        \_/  \|\_/ \| \_/ \____\"#,
             Line::from(vec![Span::styled("    Start Local Game    ", Style::default().fg(inactive_fg))])
         };
 
-        let quit_text = if self.hover == 1 {
+
+        let start_multiplayer_text = if self.hover == 1 {
+            Line::from(vec![Span::styled(" >> Start Multiplayer Game << ", Style::default().bg(hover_bg).fg(hover_fg))])
+        } else {
+            Line::from(vec![Span::styled("    Start Multiplayer Game    ", Style::default().fg(inactive_fg))])
+        };
+
+        let quit_text = if self.hover == 2 {
             Line::from(vec![Span::styled(" >> Quit << ", Style::default().bg(hover_bg).fg(hover_fg))])
         } else {
             Line::from(vec![Span::styled("    Quit    ", Style::default().fg(inactive_fg))])
@@ -95,8 +105,12 @@ r#"  \_/   \_/  /_/        \_/  \|\_/ \| \_/ \____\"#,
             .alignment(Alignment::Center)
             .render(vertical_chunks[3], buf);
 
-        Paragraph::new(quit_text)
+        Paragraph::new(start_multiplayer_text)
             .alignment(Alignment::Center)
             .render(vertical_chunks[4], buf);
+
+        Paragraph::new(quit_text)
+            .alignment(Alignment::Center)
+            .render(vertical_chunks[5], buf);
     }
 }
