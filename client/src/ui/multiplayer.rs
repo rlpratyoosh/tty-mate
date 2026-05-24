@@ -31,7 +31,7 @@ impl MultiplayerGame {
             hover: 11, // Start with white's hover
             selected: None,
             current_move_list: MoveList::new(),
-            message: "Welcome to TTY-Mate!".to_string(),
+            message: "Welcome to TTY-Mate! Finding an opponent for you...".to_string(),
             board: Board::new(),
             move_history: Vec::new(),
             player_color: None,
