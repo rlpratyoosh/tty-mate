@@ -114,7 +114,11 @@ impl App {
         match self.app_state {
             AppState::Menu => f.render_widget(&self.menu, f.area()),
             AppState::Game => f.render_widget(&self.game, f.area()),
-            AppState::Multiplayer => f.render_widget(self.multiplayer_game.as_ref().unwrap(), f.area()),
+            AppState::Multiplayer => {
+                if let Some(game) = self.multiplayer_game.as_ref() {
+                    f.render_widget(game, f.area());
+                }
+            }
         }
     }
 
@@ -122,7 +126,14 @@ impl App {
         let action = match self.app_state {
             AppState::Menu => self.menu.handle_key_event(key_event),
             AppState::Game => self.game.handle_key_event(key_event),
-            AppState::Multiplayer => self.multiplayer_game.as_mut().unwrap().handle_key_event(key_event),
+            AppState::Multiplayer => {
+                if let Some(game) = self.multiplayer_game.as_mut() {
+                    game.handle_key_event(key_event)
+                } else {
+                    AppAction::None
+                }
+            }
+,
         };
 
         match action {
