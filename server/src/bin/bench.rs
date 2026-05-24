@@ -41,7 +41,7 @@ async fn main() {
     while let Some(_) = join_set.join_next().await {}
 
     let elapsed = start_time.elapsed();
-    let elapsed_oi = elapsed - Duration::from_secs(10); // Orphans Ignored
+    let elapsed_oi = if elapsed > Duration::from_secs(10) { elapsed - Duration::from_secs(10) } else { elapsed }; // Orphans Ignored
 
     println!("\n===== BENCHMARK COMPLETE =====");
     println!("Total Time:               {:.2?}", elapsed);
