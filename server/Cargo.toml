@@ -6,4 +6,4 @@ edition = "2024"
 [dependencies]
 tty-mate-core = { path = "../core" }
 tty-mate-api = { path = "../api" }
-tokio = { version = "1.52", features = ["rt-multi-thread", "net", "sync", "io-util", "macros"] }
+tokio = { version = "1.52", features = ["rt-multi-thread", "net", "sync", "io-util", "macros", "time"] }
