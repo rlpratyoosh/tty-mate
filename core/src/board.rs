@@ -611,3 +611,68 @@ impl fmt::Display for Board {
     }
 }
 
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn turn_enforcement() {
+        let mut board = Board::new();
+        assert!(board.move_piece(12, 28).is_ok());
+        assert!(board.move_piece(13, 29).is_err());
+        assert!(board.move_piece(52, 36).is_ok());
+    }
+
+    #[test]
+    fn en_passant() {
+        let mut board = Board::new();
+        board.move_piece(12, 28).unwrap();
+        board.move_piece(48, 40).unwrap();
+        board.move_piece(28, 36).unwrap();
+        board.move_piece(51, 35).unwrap();
+ 
+        assert!(board.move_piece(36, 43).is_ok());
+        assert!(board.square[35].is_none());
+        assert_eq!(board.square[43].unwrap().piece_type, PieceType::Pawn);
+    }
+
+    #[test]
+    fn castling_denial() {
+        let mut board = Board::new();
+        board.move_piece(12, 28).unwrap();
+        board.move_piece(52, 36).unwrap();
+        board.move_piece(13, 29).unwrap();
+        board.move_piece(36, 29).unwrap();
+        board.move_piece(5, 26).unwrap();
+        board.move_piece(51, 43).unwrap();
+        board.move_piece(6, 21).unwrap();
+        board.move_piece(59, 31).unwrap();
+ 
+        assert!(board.move_piece(4, 6).is_err());
+    }
+
+    #[test]
+    fn checkmate_detection() {
+        let mut board = Board::new();
+        board.move_piece(13, 21).unwrap();
+        board.move_piece(52, 36).unwrap();
+        board.move_piece(14, 30).unwrap();
+        board.move_piece(59, 31).unwrap();
+
+        let (game_over, winner) = board.is_game_over();
+        assert!(game_over);
+        assert_eq!(winner, Some(PieceColor::Black));
+    }
+
+    #[test]
+    fn auto_queen_promotion() {
+        let mut board = Board::new();
+        board.square[63] = None;
+        board.square[55] = Some(Piece::new(PieceType::Pawn, PieceColor::White));
+        board.square[15] = None;
+ 
+        board.move_piece(55, 63).unwrap();
+ 
+        assert_eq!(board.square[63].unwrap().piece_type, PieceType::Queen);
+    }
+}
