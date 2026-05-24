@@ -38,6 +38,12 @@ pub struct Server {
     pub active_games: HashMap<usize, Arc<Mutex<Game>>>,
 }
 
+/// The main server loop that listens for incoming TCP connections.
+///
+/// This function takes in the TcpListener and initializes the shared server state wrapped in an
+/// `Arc<Mutex<Server>>`. It then enters an infinite loop accepting new connections. For each
+/// accepted connection, it clones the `Arc` to the server state and spawns a new Tokio task to
+/// handle the client using the `handle_client` function.
 pub async fn run_server(listener: TcpListener) -> io::Result<()> {
     let server = Arc::new(Mutex::new(
         Server {
@@ -53,12 +59,21 @@ pub async fn run_server(listener: TcpListener) -> io::Result<()> {
         let server = Arc::clone(&server);
         task::spawn(async move {
             handle_client(server, socket).await;
-        });
+        }); // Spawn tasks per client
     }
 }
 
+/// Manages the full lifecycle of a single TCP client connection.
+///
+/// This function is spawned as an independent Tokio task. It handles the
+/// initial ID generation, player matchmaking, and then enters an asynchronous
+/// loop to manage `ClientMessage` and route `ServerMessage` payloads.
+///
+/// It strictly guarantees that all moves made are valid and upon a socket disconnect
+/// or timeout, the player's internal state is cleanly popped from the global 
+/// `Arc<Mutex<Server>>` to prevent memory leaks or orphaned locks.
 pub async fn handle_client(server: Arc<Mutex<Server>>, mut socket: TcpStream) {
-    let (tx, mut rx) = mpsc::unbounded_channel();
+    let (tx, mut rx) = mpsc::unbounded_channel(); // Channel for inter-task communications, transmitting ServerMessage
 
     let player_id: usize;
     let mut game_id: Option<usize> = None;
@@ -77,6 +92,7 @@ pub async fn handle_client(server: Arc<Mutex<Server>>, mut socket: TcpStream) {
 
         Log::info(&format!("Player {} connected", player_id));
 
+        // If player exists in the queue, pop them and create a game, else add the player to the queue
         if let Some(opponent) = server.matchmaking_queue.pop_front() {
             let next_game_id = server.next_game_id;
             server.next_game_id += 1;
@@ -94,6 +110,7 @@ pub async fn handle_client(server: Arc<Mutex<Server>>, mut socket: TcpStream) {
             let game_lock = new_game.lock().await;
             Log::info(format!("New game created with ID {} between Player {} (White) and Player {} (Black)", game_lock.id, game_lock.white.id, game_lock.black.id).as_str());
 
+            // Send GameStart messages to both players
             let _ = game_lock.white.tx.send(ServerMessage::GameStart { game_id: next_game_id, color: PieceColor::White });
             let _ = game_lock.black.tx.send(ServerMessage::GameStart { game_id: next_game_id, color: PieceColor::Black });
         } else {
@@ -142,6 +159,8 @@ pub async fn handle_client(server: Arc<Mutex<Server>>, mut socket: TcpStream) {
                             continue;
                         }
                         Log::info(&format!("Player {} moved from {:?} to {:?}", player_id, from, to));
+
+                        // Notify opponent of the move
                         match game_lock.board.get_current_turn() {
                             PieceColor::White => {
                                 let _ = game_lock.white.tx.send(ServerMessage::Move { from, to, piece_type });
@@ -177,7 +196,7 @@ pub async fn handle_client(server: Arc<Mutex<Server>>, mut socket: TcpStream) {
 
                         game = Some(Arc::clone(&new_game));
                         game_id = Some(new_game_id);
-                        player_color = if game.as_ref().unwrap().lock().await.white.id == player_id {
+                        player_color = if game.as_ref().unwrap().lock().await.white.id == player_id { // Safe to unwrap since we just created the game
                             Some(PieceColor::White)
                         } else {
                             Some(PieceColor::Black)
@@ -202,9 +221,10 @@ pub async fn handle_client(server: Arc<Mutex<Server>>, mut socket: TcpStream) {
     Log::info(&format!("Cleaning up state for Player {}", player_id));
     let mut server_state = server.lock().await;
 
+    // If game created, remove game, else remove player from the queue
     if let Some(active_game_id) = game_id {
-        let game_lock = game.as_ref().unwrap().lock().await;
-        match player_color {
+        let game_lock = game.as_ref().unwrap().lock().await; // Safe to unwrap since we only set game_id if we successfully created a game
+        match player_color { // Notify opponent of game abortion
             Some(PieceColor::Black) => { let _ = game_lock.white.tx.send(ServerMessage::GameAborted); },
             Some(PieceColor::White) => { let _ = game_lock.black.tx.send(ServerMessage::GameAborted); },
             _ => {},
