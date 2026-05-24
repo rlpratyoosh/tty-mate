@@ -1,3 +1,8 @@
+//! # TTY Mate Chess Engine
+//! This library provides the core board and essensial functions for the tty mate chess engine. It
+//! defines the data structures for representing the chess board, pieces, and game state, as well
+//! as the logic for move generation, move validation, and game rules enforcement.
+
 use std::fmt;
 
 #[derive(Debug, Copy, Clone, PartialEq)]
@@ -34,7 +39,7 @@ impl Piece {
 #[derive(Debug)]
 pub struct Board {
     square: [Option<Piece>; 64],
-    current_turn: PieceColor, // For backend validation of moves
+    current_turn: PieceColor,
     checked: bool,
     checkers: [Option<usize>; 2], // Max 2 pieces can check the king at once
     black_king_pos: usize,
@@ -42,7 +47,7 @@ pub struct Board {
     game_over: bool,
     winner: Option<PieceColor>,
     castle_rights: CastleRights,
-    en_passant_target: Option<usize>,
+    en_passant_target: Option<usize>, // To know if em passant is valid and keep track of the target piece
 }
 
 #[derive(Debug)]
@@ -53,9 +58,10 @@ struct CastleRights {
     black_queenside: bool,
 }
 
+// This structure is implemented to only iterate till possible moves
 #[derive(Debug)]
 pub struct MoveList {
-    pub moves: [usize; 27], // Max possible moves for a queen in the center of an empty board
+    pub moves: [usize; 27], // Max possible moves for a queen in the center of an empty board is 27
     pub count: usize,
 }
 
@@ -74,6 +80,10 @@ impl MoveList {
 }
 
 impl Board {
+    /// Initializes a new standard chess board.
+    ///
+    /// Sets up the initial 8x8 grid mapped to a 64-element flat array.
+    /// It automatically populates the pieces in their standard starting positions.
     pub fn new() -> Self {
         let mut square: [Option<Piece>; 64] = [None; 64];
 
@@ -98,7 +108,7 @@ impl Board {
                     _ => unreachable!(),
                 },
                 1 | 6 => PieceType::Pawn,
-                _ => unreachable!(), // Nothing else exists but need to satisfy the match statement
+                _ => unreachable!(),
             };
 
             square[i] = Some(Piece::new(piece_type, piece_color));
@@ -106,11 +116,11 @@ impl Board {
 
         Board {
             square,
-            current_turn: PieceColor::White, // Default to white's turn
+            current_turn: PieceColor::White,
             checked: false,
             checkers: [None; 2],
-            black_king_pos: 60, // Starting position of black king
-            white_king_pos: 4, // Starting position of white king
+            black_king_pos: 60,
+            white_king_pos: 4,
             game_over: false,
             winner: None,
             castle_rights: CastleRights {
@@ -123,15 +133,31 @@ impl Board {
         }
     }
 
+    /// Converts a 1D array index (0-63) into 2D board coordinates (row, col).
+    ///
+    /// The board is mapped such that index 0 is (0, 0) a1 and index 63 is (7, 7) h8.
+    ///
+    /// # Examples
+    /// ```
+    /// use tty_mate_core::Board;
+    /// 
+    /// assert_eq!(Board::index_to_coordinates(0), (0, 0));
+    /// assert_eq!(Board::index_to_coordinates(8), (1, 0));
+    /// assert_eq!(Board::index_to_coordinates(63), (7, 7));
+    /// ```
     pub fn index_to_coordinates(index: usize) -> (usize, usize) {
         let row = index / 8;
         let col = index % 8;
         (row, col)
     }
 
+    /// Returns the exact board index of the King currently in check, if any.
+    ///
+    /// This is primarily used by the rendering engine to visually highlight
+    /// the threatened King.
     pub fn get_checked_index(&self) -> Option<usize> {
         if self.checked {
-            match self.current_turn {
+            match self.current_turn {  // If a king is checked it belongs to the color whose turn it is
                 PieceColor::White => Some(self.white_king_pos),
                 PieceColor::Black => Some(self.black_king_pos),
             }
@@ -140,6 +166,30 @@ impl Board {
         }
     }
 
+
+    /// Attempts to apply a strictly legal move to the board state.
+    ///
+    /// This is the core function to move pieces on the board. It verifies
+    /// turn order, checks move legality (including FIDE rules like castling 
+    /// en passant, and check avoidance), and applies the move.
+    ///
+    /// It automatically handles side-effects such as turn switching, pawn promotion,
+    /// and checkmate detection.
+    ///
+    /// Returns `Ok(())` if the move was successful, or an `Err` explaining the rule violation.
+    ///
+    /// # Examples
+    /// ```
+    /// use tty_mate_core::Board;
+    ///
+    /// let mut board = Board::new();
+    ///
+    /// // Move White's pawn forward two squares
+    /// assert!(board.move_piece(12, 28).is_ok());
+    ///
+    /// // Attempt to move White's piece out of turn
+    /// assert!(board.move_piece(11, 27).is_err());
+    /// ```
     pub fn move_piece(&mut self, current_idx: usize, target_idx: usize) -> Result<(), &'static str> {
         if self.game_over {
             return Err("Game is already over");
@@ -147,12 +197,11 @@ impl Board {
         let possible_moves = self.get_valid_moves(current_idx)?; // Also checks if there's a piece at current_idx
         let piece = self.square[current_idx].unwrap(); // Safe to unwrap since we just checked it
 
-        // Check if it's the current player's turn
         if piece.piece_color != self.current_turn {
             return Err("It's not your turn");
         }
 
-        let valid_moves = &possible_moves.moves[0..possible_moves.count]; // Slice the moves array to get only the valid moves
+        let valid_moves = &possible_moves.moves[0..possible_moves.count];
         if !valid_moves.contains(&target_idx) {
             return Err("Invalid move!");
         }
@@ -162,7 +211,7 @@ impl Board {
         self.square[target_idx] = self.square[current_idx].take();
         if piece.piece_type == PieceType::King {
             let distance = target_idx as isize - current_idx as isize;
-            if distance == 2 {
+            if distance == 2 { // If distance is +/-2, it is a casling attempt
                 self.square[current_idx + 1] = self.square[current_idx + 3].take(); // Kingside
             } else if distance == -2 {
                 self.square[current_idx - 1] = self.square[current_idx - 4].take(); // Queenside
@@ -185,7 +234,7 @@ impl Board {
             if target_idx < 8 || target_idx > 55 { // Pawn Promotion
                 self.square[target_idx] = Some(Piece::new(PieceType::Queen, piece.piece_color)); // Auto promote to queen for MVP
             }
-            if (target_idx as isize - current_idx as isize).abs() == 16 { // En Passant
+            if (target_idx as isize - current_idx as isize).abs() == 16 { // Two step move, Possible En Passant
                 new_en_passant_target = Some((current_idx + target_idx) / 2);
             }
             if let Some(en_passant_idx) = self.en_passant_target {
@@ -204,11 +253,10 @@ impl Board {
                 7 => self.castle_rights.white_kingside = false,
                 56 => self.castle_rights.black_queenside = false,
                 63 => self.castle_rights.black_kingside = false,
-                _ => {} // Do Nothing
+                _ => {}
             }
         }
 
-        // Switch turns
         self.current_turn = match self.current_turn {
             PieceColor::White => PieceColor::Black,
             PieceColor::Black => PieceColor::White,
@@ -248,6 +296,9 @@ impl Board {
             PieceColor::White => Piece::new(PieceType::King, PieceColor::White),
             PieceColor::Black => Piece::new(PieceType::King, PieceColor::Black),
         };
+
+        // Become a universal piece and cast rays in every possible direction, looking for possible
+        // pieces in the way.
         let pawn_moves = self.get_possible_pawn_moves(king_piece, king_pos, true);
         if self.check_for_checks(pawn_moves, king_color, &[PieceType::Pawn], &mut result, &mut i) {
             return result;
@@ -298,6 +349,11 @@ impl Board {
         true
     }
 
+    /// Returns a tuple indicating if the game has concluded and the color of the winner.
+    ///
+    /// A return value of `(false, None)` indicates the game is active.
+    /// `(true, Some(WinningColor))` indicates a checkmate.
+    /// `(true, None)` indicates a stalemate.
     pub fn is_game_over(&self) -> (bool, Option<PieceColor>) {
         (self.game_over, self.winner)
     }
@@ -310,8 +366,11 @@ impl Board {
         self.square[idx].map(|piece| piece.piece_color)
     }
 
+    /// Calculates "pseudo-legal" moves for a piece based purely on its movement mechanics.
+    ///
+    /// Note: This method does NOT check if the resulting move leaves the King in check.
+    /// It is primarily an internal helper for `get_valid_moves`.
     pub fn get_possible_moves(&self, idx: usize) -> Result<MoveList, &'static str> {
-        // Check if there's a piece at the given index
         let Some(piece) = self.square[idx] else {
             return Err("No piece at the given index");
         };
@@ -326,11 +385,16 @@ impl Board {
         }
     }
 
+    /// Calculates strictly legal moves for a piece at the given index.
+    ///
+    /// This method generates all pseudo-legal moves and filters out any trajectory
+    /// that would expose the player's own King to an active check by simulating "ghost moves".
     pub fn get_valid_moves(&mut self, idx: usize) -> Result<MoveList, &'static str> {
         let possible_moves = self.get_possible_moves(idx)?;
         let mut valid_moves = MoveList::new();
         let piece_color = self.square[idx].unwrap().piece_color; // Sure that a piece exists here
 
+        // Making ghost moves and checking for checks in real time
         for i in 0..possible_moves.count {
             let target_idx = possible_moves.moves[i];
             let mut white_king_moved = false;
@@ -341,7 +405,7 @@ impl Board {
             if self.square[idx].unwrap().piece_type == PieceType::King && distance.abs() == 2 { // Castling Move
                 let passing_idx = if distance > 0 { idx + 1 } else { idx - 1 };
 
-                // Ghost Move the King
+                // Checking if the passing square is attacked (King can't passthrough an attacked square when castling)
                 self.square[passing_idx] = self.square[idx].take();
                 if idx == self.white_king_pos { 
                     self.white_king_pos = passing_idx;
@@ -383,7 +447,6 @@ impl Board {
                 }
             }
 
-            // Ghost Move
             self.square[target_idx] = self.square[idx].take();
 
             // Temporarily change king pos if its a king
