@@ -65,9 +65,29 @@ impl MultiplayerGame {
 
                 let color_prefix = if self.player_color != Some(PieceColor::White) { "White:" } else { "Black:" };
                 self.move_history.push(format!("{} {}", color_prefix, move_record));
+
+
+                let (is_game_over, winner) = self.board.is_game_over();
+                if is_game_over {
+                    if let Some(winner) = winner {
+                        self.message = if winner == self.player_color.unwrap_or(PieceColor::White) {
+                            "CHECKMATE! You win!".to_string()
+                        } else {
+                            "CHECKMATE! You lose!".to_string()
+                        };
+                    } else {
+                        self.message = "STALEMATE! It's a draw!".to_string();
+                    }
+                    self.running = false;
+                }
+                return;
             },
             ServerMessage::GameAborted =>{
                 self.running = false;
+                let (is_game_over, _) = self.board.is_game_over(); 
+                if is_game_over {
+                    return;
+                }
                 self.message = "Game aborted by opponent!".to_string();
             },
         }
@@ -142,13 +162,15 @@ impl MultiplayerGame {
                 let (is_game_over, winner) = self.board.is_game_over();
                 if is_game_over {
                     if let Some(winner) = winner {
-                        match winner {
-                            PieceColor::White => self.message = "CHECKMATE! White wins!".to_string(),
-                            PieceColor::Black => self.message = "CHECKMATE! Black wins!".to_string(),
-                        }
+                        self.message = if winner == self.player_color.unwrap_or(PieceColor::White) {
+                            "CHECKMATE! You win!".to_string()
+                        } else {
+                            "CHECKMATE! You lose!".to_string()
+                        };
                     } else {
                         self.message = "STALEMATE! It's a draw!".to_string();
                     }
+                    self.running = false;
                 }
                 return;
             }
