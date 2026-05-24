@@ -44,6 +44,10 @@ impl MultiplayerGame {
             ServerMessage::GameStart { game_id: _, color } => {
                 self.running = true;
                 self.player_color = Some(color);
+                match color {
+                    PieceColor::White => self.hover = 11, // Start with white's hover
+                    PieceColor::Black => self.hover = 52, // Start wit hblack's hover
+                }
                 let color_str = match color {
                     PieceColor::White => "White",
                     PieceColor::Black => "Black",
@@ -266,7 +270,7 @@ impl Widget for &MultiplayerGame {
                 };
 
                 let is_our_turn = self.running && self.player_color == Some(self.board.get_current_turn());
-                let mut bg_color = if is_our_turn && idx == self.hover {
+                let mut bg_color = if idx == self.hover {
                     Color::Rgb(255, 180, 50)
                 } else if is_our_turn && self.current_move_list.moves[0..self.current_move_list.count].contains(&idx) {
                     Color::Rgb(115, 130, 60)
