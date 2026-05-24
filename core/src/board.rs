@@ -306,6 +306,10 @@ impl Board {
         self.current_turn
     }
 
+    pub fn get_piece_color(&self, idx: usize) -> Option<PieceColor> {
+        self.square[idx].map(|piece| piece.piece_color)
+    }
+
     pub fn get_possible_moves(&self, idx: usize) -> Result<MoveList, &'static str> {
         // Check if there's a piece at the given index
         let Some(piece) = self.square[idx] else {

@@ -157,16 +157,16 @@ impl MultiplayerGame {
     }
 
     fn select(&mut self) {
-        let is_white_piece = self.board.get_piece_char(self.hover).map_or(false, |c| c.is_ascii_uppercase());
-        let is_black_piece = self.board.get_piece_char(self.hover).map_or(false, |c| c.is_ascii_lowercase());
+        let is_white_piece = self.board.get_piece_color(self.hover).map_or(false, |c| c == PieceColor::White);
+        let is_black_piece = self.board.get_piece_color(self.hover).map_or(false, |c| c == PieceColor::Black);
 
-        let piece_belongs_to_us = match self.player_color {
+        let piece_belongs_to_me = match self.player_color {
             Some(PieceColor::White) => is_white_piece,
             Some(PieceColor::Black) => is_black_piece,
             None => false,
         };
 
-        if !piece_belongs_to_us {
+        if !piece_belongs_to_me {
             self.message = "You can only select your own pieces!".to_string();
             return;
         }
