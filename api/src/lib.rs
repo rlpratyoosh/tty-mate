@@ -1,3 +1,8 @@
+//! # TTY-Mate API
+//!
+//! This library defines the client-server protocol for TTY-Mate, a terminal-based chess game.
+//! It includes message formats for communication between the client and server, as well as error handling.
+
 use tty_mate_core::board::{PieceColor, PieceType};
 
 #[derive(Debug, PartialEq)]
@@ -21,6 +26,24 @@ pub enum GameError {
 }
 
 impl GameError {
+
+    /// Parses a string message into a GameError. The expected format is `e:<error_code>`.
+    /// <br><br>
+    /// Error codes are:
+    /// - i: InvalidMessage
+    /// - n: NoGameFound
+    /// - m: InvalidMove
+    ///
+    /// It returns `Ok(GameError::InvalidMessage)` if the given error message is "e:i" but
+    /// `Err(GameError::InvalidMessage)` if it recieves an invalid message to parse.
+    ///
+    /// # Examples
+    /// ```
+    /// use tty_mate_api::GameError;
+    ///
+    /// let error = GameError::parse("e:n").unwrap();
+    /// assert_eq!(error, GameError::NoGameFound)
+    /// ```
     pub fn parse(message: &str) -> Result<GameError, GameError> {
         let tokens: Vec<&str> = message.split(":").collect();
         let Some(mode) = tokens.get(0) else {
@@ -43,6 +66,16 @@ impl GameError {
         Ok(game_error)
     }
 
+    /// Converts a GameError into its string representation which can be used to transmit messages
+    /// over TCP.
+    /// 
+    /// # Examples
+    /// ```
+    /// use tty_mate_api::GameError;
+    ///
+    /// let msg = (GameError::NoGameFound).to_string();
+    /// assert_eq!(msg, "e:n\n".to_string());
+    /// ```
     pub fn to_string(&self) -> String {
         match self {
             GameError::InvalidMessage => "e:i\n".to_string(),
@@ -53,6 +86,25 @@ impl GameError {
 }
 
 impl ServerMessage {
+
+    /// Parses a string message into a ServerMessage.
+    /// <br><br>
+    /// The expected formats are:
+    /// - `s:<game_id>:<w|b>`: GameStart (e.g., "s:12:w" for game 12, playing as White)
+    /// - `m:<from>:<to>:[piece_type]`: Move (e.g., "m:8:16" or "m:55:63:q" for queen promotion)
+    /// - `a`: GameAborted
+    ///
+    /// It returns `Ok(ServerMessage)` on success, or `Err(GameError::InvalidMessage)`
+    /// if it receives an invalid message payload to parse.
+    ///
+    /// # Examples
+    /// ```
+    /// use tty_mate_api::ServerMessage;
+    /// use tty_mate_core::board::PieceColor;
+    ///
+    /// let msg = ServerMessage::parse("s:42:w").unwrap();
+    /// assert_eq!(msg, ServerMessage::GameStart { game_id: 42, color: PieceColor::White });
+    /// ```
     pub fn parse(message: &str) -> Result<ServerMessage, GameError> {
         let tokens: Vec<&str> = message.split(":").collect();
         let Some(mode) = tokens.get(0) else {
@@ -107,6 +159,17 @@ impl ServerMessage {
         Ok(server_message)
     }
 
+    /// Converts a ServerMessage into its string representation which can be used to transmit messages
+    /// over TCP.
+    ///
+    /// # Examples
+    /// ```
+    /// use tty_mate_api::ServerMessage;
+    /// use tty_mate_core::board::PieceColor;
+    ///
+    /// let msg = (ServerMessage::GameStart { game_id: 42, color: PieceColor::White }).to_string();
+    /// assert_eq!(msg, "s:42:w\n".to_string());
+    /// ```
     pub fn to_string(&self) -> String {
         match self {
             ServerMessage::GameStart { game_id, color } => {
@@ -137,6 +200,23 @@ impl ServerMessage {
 }
 
 impl ClientMessage {
+
+    /// Parses a string message into a ClientMessage.
+    /// <br><br>
+    /// The expected formats are:
+    /// - `m:<from>:<to>:[piece_type]`: Move (e.g., "m:12:28" or "m:55:63:q" for queen promotion)
+    /// - `q`: Quit
+    ///
+    /// It returns `Ok(ClientMessage)` on success, or `Err(GameError::InvalidMessage)`
+    /// if it receives an invalid message payload to parse.
+    ///
+    /// # Examples
+    /// ```
+    /// use tty_mate_api::ClientMessage;
+    ///
+    /// let msg = ClientMessage::parse("q").unwrap();
+    /// assert_eq!(msg, ClientMessage::Quit);
+    /// ```
     pub fn parse(message: &str) -> Result<ClientMessage, GameError> {
         let tokens: Vec<&str> = message.split(":").collect();
         let Some(mode) = tokens.get(0) else {
@@ -174,6 +254,16 @@ impl ClientMessage {
         Ok(client_message)
     }
 
+    /// Converts a ClientMessage into its string representation which can be used to transmit messages
+    /// over TCP.
+    /// 
+    /// # Examples
+    /// ```
+    /// use tty_mate_api::ClientMessage;
+    ///
+    /// let msg = (ClientMessage::Quit).to_string();
+    /// assert_eq!(msg, "q\n".to_string());
+    /// ```
     pub fn to_string(&self) -> String {
         match self {
             ClientMessage::Move { from, to, piece_type } => {
