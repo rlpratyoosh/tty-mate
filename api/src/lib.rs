@@ -1,16 +1,19 @@
 use tty_mate_core::board::{PieceColor, PieceType};
 
+#[derive(Debug, PartialEq)]
 pub enum ClientMessage {
     Move { from: usize, to: usize, piece_type: Option<PieceType>},
     Quit,
 }
 
+#[derive(Debug, PartialEq)]
 pub enum ServerMessage {
     GameStart { game_id: usize, color: PieceColor },
     Move { from: usize, to: usize, piece_type: Option<PieceType> },
     GameAborted,
 }
 
+#[derive(Debug, PartialEq)]
 pub enum GameError {
     InvalidMessage,
     NoGameFound,
@@ -194,4 +197,103 @@ impl ClientMessage {
 }
 
 
+#[cfg(test)]
+mod tests {
+    use super::*;
 
+
+    #[test]
+    fn game_error_parse_valid() {
+        assert_eq!(GameError::parse("e:i"), Ok(GameError::InvalidMessage));
+        assert_eq!(GameError::parse("e:n"), Ok(GameError::NoGameFound));
+        assert_eq!(GameError::parse("e:m"), Ok(GameError::InvalidMove));
+    }
+
+    #[test]
+    fn game_error_parse_garbage() {
+        assert_eq!(GameError::parse("e:x"), Err(GameError::InvalidMessage));
+        assert_eq!(GameError::parse("x:i"), Err(GameError::InvalidMessage));
+        assert_eq!(GameError::parse("ei"), Err(GameError::InvalidMessage));
+        assert_eq!(GameError::parse(""), Err(GameError::InvalidMessage));
+        assert_eq!(GameError::parse("e:i:extra:garbage"), Ok(GameError::InvalidMessage));
+    }
+
+    #[test]
+    fn game_error_to_string() {
+        assert_eq!(GameError::InvalidMessage.to_string(), "e:i\n");
+        assert_eq!(GameError::NoGameFound.to_string(), "e:n\n");
+        assert_eq!(GameError::InvalidMove.to_string(), "e:m\n");
+    }
+
+
+    #[test]
+    fn server_message_parse_valid() {
+        assert_eq!(ServerMessage::parse("s:42:w"), Ok(ServerMessage::GameStart { game_id: 42, color: PieceColor::White }));
+        assert_eq!(ServerMessage::parse("s:0:b"), Ok(ServerMessage::GameStart { game_id: 0, color: PieceColor::Black }));
+
+        assert_eq!(ServerMessage::parse("m:8:16"), Ok(ServerMessage::Move { from: 8, to: 16, piece_type: None }));
+
+        assert_eq!(ServerMessage::parse("m:55:63:q"), Ok(ServerMessage::Move { from: 55, to: 63, piece_type: Some(PieceType::Queen) }));
+        assert_eq!(ServerMessage::parse("m:55:63:n"), Ok(ServerMessage::Move { from: 55, to: 63, piece_type: Some(PieceType::Knight) }));
+        assert_eq!(ServerMessage::parse("m:55:63:b"), Ok(ServerMessage::Move { from: 55, to: 63, piece_type: Some(PieceType::Bishop) }));
+        assert_eq!(ServerMessage::parse("m:55:63:r"), Ok(ServerMessage::Move { from: 55, to: 63, piece_type: Some(PieceType::Rook) }));
+
+        assert_eq!(ServerMessage::parse("a"), Ok(ServerMessage::GameAborted));
+    }
+
+    #[test]
+    fn server_message_parse_garbage() {
+        assert_eq!(ServerMessage::parse("s:42"), Err(GameError::InvalidMessage));
+        assert_eq!(ServerMessage::parse("m:8"), Err(GameError::InvalidMessage));
+        assert_eq!(ServerMessage::parse("s"), Err(GameError::InvalidMessage));
+        assert_eq!(ServerMessage::parse("m"), Err(GameError::InvalidMessage));
+        assert_eq!(ServerMessage::parse(""), Err(GameError::InvalidMessage));
+
+        assert_eq!(ServerMessage::parse("s:abc:w"), Err(GameError::InvalidMessage));
+        assert_eq!(ServerMessage::parse("s:42:x"), Err(GameError::InvalidMessage));
+        assert_eq!(ServerMessage::parse("m:abc:16"), Err(GameError::InvalidMessage));
+        assert_eq!(ServerMessage::parse("m:8:def"), Err(GameError::InvalidMessage));
+        assert_eq!(ServerMessage::parse("m:55:63:x"), Err(GameError::InvalidMessage));
+
+        assert_eq!(ServerMessage::parse("x:42:w"), Err(GameError::InvalidMessage));
+    }
+
+    #[test]
+    fn server_message_to_string() {
+        assert_eq!(ServerMessage::GameStart { game_id: 42, color: PieceColor::White }.to_string(), "s:42:w\n");
+        assert_eq!(ServerMessage::GameStart { game_id: 0, color: PieceColor::Black }.to_string(), "s:0:b\n");
+        assert_eq!(ServerMessage::Move { from: 8, to: 16, piece_type: None }.to_string(), "m:8:16\n");
+        assert_eq!(ServerMessage::Move { from: 55, to: 63, piece_type: Some(PieceType::Queen) }.to_string(), "m:55:63:q\n");
+        assert_eq!(ServerMessage::GameAborted.to_string(), "a\n");
+    }
+
+
+    #[test]
+    fn client_message_parse_valid() {
+        assert_eq!(ClientMessage::parse("m:12:28"), Ok(ClientMessage::Move { from: 12, to: 28, piece_type: None }));
+
+        assert_eq!(ClientMessage::parse("m:55:63:q"), Ok(ClientMessage::Move { from: 55, to: 63, piece_type: Some(PieceType::Queen) }));
+
+        assert_eq!(ClientMessage::parse("q"), Ok(ClientMessage::Quit));
+    }
+
+    #[test]
+    fn client_message_parse_garbage() {
+        assert_eq!(ClientMessage::parse("m:12"), Err(GameError::InvalidMessage));
+        assert_eq!(ClientMessage::parse("m"), Err(GameError::InvalidMessage));
+        assert_eq!(ClientMessage::parse(""), Err(GameError::InvalidMessage));
+
+        assert_eq!(ClientMessage::parse("m:abc:28"), Err(GameError::InvalidMessage));
+        assert_eq!(ClientMessage::parse("m:12:def"), Err(GameError::InvalidMessage));
+        assert_eq!(ClientMessage::parse("m:55:63:x"), Err(GameError::InvalidMessage));
+
+        assert_eq!(ClientMessage::parse("x:12:28"), Err(GameError::InvalidMessage));
+    }
+
+    #[test]
+    fn client_message_to_string() {
+        assert_eq!(ClientMessage::Move { from: 12, to: 28, piece_type: None }.to_string(), "m:12:28\n");
+        assert_eq!(ClientMessage::Move { from: 55, to: 63, piece_type: Some(PieceType::Queen) }.to_string(), "m:55:63:q\n");
+        assert_eq!(ClientMessage::Quit.to_string(), "q\n");
+    }
+}
