@@ -4,11 +4,13 @@ use tty_mate_core::board::{Board, PieceColor};
 use std::{
     collections::{HashMap, VecDeque},
     sync::Arc,
+    io,
 };
 use tokio::{
     sync::{mpsc, Mutex},
     io::{AsyncBufReadExt, AsyncWriteExt, BufReader},
-    net::{TcpStream},
+    net::{TcpStream, TcpListener},
+    task,
 };
 use tty_mate_api::{
     ClientMessage,
@@ -34,6 +36,25 @@ pub struct Server {
     pub next_game_id: usize,
     pub matchmaking_queue: VecDeque<Player>,
     pub active_games: HashMap<usize, Arc<Mutex<Game>>>,
+}
+
+pub async fn run_server(listener: TcpListener) -> io::Result<()> {
+    let server = Arc::new(Mutex::new(
+        Server {
+            next_player_id: 0,
+            next_game_id: 0,
+            matchmaking_queue: VecDeque::new(),
+            active_games: HashMap::new(),
+        }
+    ));
+
+    loop {
+        let (socket, _) = listener.accept().await?;
+        let server = Arc::clone(&server);
+        task::spawn(async move {
+            handle_client(server, socket).await;
+        });
+    }
 }
 
 pub async fn handle_client(server: Arc<Mutex<Server>>, mut socket: TcpStream) {
