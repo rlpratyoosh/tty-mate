@@ -1,6 +1,6 @@
 mod log;
 
-use tty_mate_core::board::{Board, PieceColor};
+use tty_mate_core::{Board, PieceColor};
 use std::{
     collections::{HashMap, VecDeque},
     sync::Arc,

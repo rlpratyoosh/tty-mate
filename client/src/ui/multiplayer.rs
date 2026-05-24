@@ -1,4 +1,4 @@
-use tty_mate_core::board::{Board, MoveList, PieceColor};
+use tty_mate_core::{Board, MoveList, PieceColor};
 use tty_mate_api::{ServerMessage, ClientMessage, GameError};
 use crate::ui::app::AppAction;
 use crossterm::event::{KeyEvent, KeyCode};

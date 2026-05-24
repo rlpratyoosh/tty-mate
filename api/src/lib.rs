@@ -3,7 +3,7 @@
 //! This library defines the client-server protocol for TTY-Mate, a terminal-based chess game.
 //! It includes message formats for communication between the client and server, as well as error handling.
 
-use tty_mate_core::board::{PieceColor, PieceType};
+use tty_mate_core::{PieceColor, PieceType};
 
 #[derive(Debug, PartialEq)]
 pub enum ClientMessage {
@@ -100,7 +100,7 @@ impl ServerMessage {
     /// # Examples
     /// ```
     /// use tty_mate_api::ServerMessage;
-    /// use tty_mate_core::board::PieceColor;
+    /// use tty_mate_core::PieceColor;
     ///
     /// let msg = ServerMessage::parse("s:42:w").unwrap();
     /// assert_eq!(msg, ServerMessage::GameStart { game_id: 42, color: PieceColor::White });
@@ -165,7 +165,7 @@ impl ServerMessage {
     /// # Examples
     /// ```
     /// use tty_mate_api::ServerMessage;
-    /// use tty_mate_core::board::PieceColor;
+    /// use tty_mate_core::PieceColor;
     ///
     /// let msg = (ServerMessage::GameStart { game_id: 42, color: PieceColor::White }).to_string();
     /// assert_eq!(msg, "s:42:w\n".to_string());
