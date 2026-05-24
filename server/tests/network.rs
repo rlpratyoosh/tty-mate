@@ -31,6 +31,7 @@ async fn matchmaking_handshake() {
     let msg1 = reader1.next_line().await.unwrap().unwrap();
     let msg2 = reader2.next_line().await.unwrap().unwrap();
 
+    // If the handshake is successful, both clients should receive a message indicating their color and game ID
     assert_eq!(msg1, "s:0:w");
     assert_eq!(msg2, "s:0:b");
 }
