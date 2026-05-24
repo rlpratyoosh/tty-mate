@@ -223,12 +223,12 @@ impl Widget for &Game {
                     Some('b') => ('♝', Color::Black),
                     Some('q') => ('♛', Color::Black),
                     Some('k') => ('♚', Color::Black),
-                    Some('P') => ('♙', Color::White),
-                    Some('R') => ('♖', Color::White),
-                    Some('N') => ('♘', Color::White),
-                    Some('B') => ('♗', Color::White),
-                    Some('Q') => ('♕', Color::White),
-                    Some('K') => ('♔', Color::White),
+                    Some('P') => ('♟', Color::White),
+                    Some('R') => ('♜', Color::White),
+                    Some('N') => ('♞', Color::White),
+                    Some('B') => ('♝', Color::White),
+                    Some('Q') => ('♛', Color::White),
+                    Some('K') => ('♚', Color::White),
                     _ => (' ', Color::Black),
                 };
 
