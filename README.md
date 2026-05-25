@@ -10,9 +10,13 @@ A minimal, terminal-based chess game and multiplayer TCP server written in Rust.
 
 ## Screenshots
 
-|                  Menu                  |                Board                  |                 Multiplayer            |
-| :--------------------------------------------: | :--------------------------------------: | :--------------------------------------: |
-| ![Landing Page](screenshots/chess-menu.png) | ![Game Menu](screenshots/chess-board.png) | ![Multiplayer Game](screenshots/chess-multiplayer.png)  |
+|                  Menu                  |                Board                  |
+| :--------------------------------------------: | :--------------------------------------: |
+| ![Landing Page](screenshots/chess-menu.png) | ![Game Menu](screenshots/chess-board.png) | 
+
+|                 Multiplayer            |
+| :--------------------------------------------: |
+|![Multiplayer Game](screenshots/chess-multiplayer.png)  |
 
 ## Features
 
