@@ -67,7 +67,7 @@ cargo run --release --bin tty-mate-client
 cargo run --release --bin bench -- -c 2000 -m 20 -t 10
 ```
 
-*Note: `-c` represents concurrent players, `-m` represents moves per second per player, `-t` represents waiting time in queue for each player.*
+*Note: `-c` represents concurrent players, `-m` represents consecutive moves per player, `-t` represents waiting time in queue for each player.*
 
 
 ## Contributing
