@@ -4,15 +4,13 @@ use std::{
         Arc,
     },
     time::Duration,
+    env,
 };
 use tokio::{
     io::{AsyncBufReadExt, AsyncWriteExt, BufReader},
     net::TcpStream,
     time::{ Instant, timeout },
 };
-
-const CONCURRENT_CLIENTS: usize = 2000;
-const MOVES_PER_CLIENT: usize = 20;
 
 #[derive(Default)]
 struct Metrics {
@@ -24,30 +22,64 @@ struct Metrics {
 
 #[tokio::main]
 async fn main() {
+    let arguements: Vec<String> = env::args().collect();
+
+    let mut concurrent_clients: usize = 2000;
+    let mut moves_per_client: usize = 20;
+    let mut timeout_time: u64 = 10;
+
+    let mut i = 1;
+    while i < arguements.len() {
+        match arguements[i].as_str() {
+            "-c" => {
+                if let Some(val) = arguements.get(i + 1) {
+                    concurrent_clients = val.parse().unwrap_or(concurrent_clients);
+                }
+                i += 1;
+            },
+            "-m" => {
+                if let Some(val) = arguements.get(i + 1) {
+                    moves_per_client = val.parse().unwrap_or(moves_per_client);
+                }
+                i += 1;
+            },
+            "-t" => {
+                if let Some(val) = arguements.get(i + 1) {
+                    timeout_time = val.parse().unwrap_or(timeout_time);
+                }
+                i += 1;
+            },
+            _ => {
+                println!("Unknown argument: {}, Falling back to default!", arguements[i]);
+            },
+        }
+        i += 1;
+    }
+
     println!("Starting TCP Connection Storm...");
-    println!("Target: {} concurrent clients.", CONCURRENT_CLIENTS);
+    println!("Target: {} concurrent clients.", concurrent_clients);
 
     let metrics = Arc::new(Metrics::default());
     let mut join_set = tokio::task::JoinSet::new();
     let start_time = Instant::now();
 
-    for id in 0..CONCURRENT_CLIENTS {
+    for id in 0..concurrent_clients {
         let metrics_clone = Arc::clone(&metrics);
         join_set.spawn(async move {
-            run_simulated_client(id, metrics_clone).await;
+            run_simulated_client(id, metrics_clone, timeout_time, moves_per_client).await;
         });
     }
 
     while let Some(_) = join_set.join_next().await {}
 
     let elapsed = start_time.elapsed();
-    let elapsed_oi = if elapsed > Duration::from_secs(10) { elapsed - Duration::from_secs(10) } else { elapsed }; // Orphans Ignored
+    let elapsed_oi = if elapsed > Duration::from_secs(timeout_time) { elapsed - Duration::from_secs(timeout_time) } else { elapsed }; // Orphans Ignored
 
     println!("\n===== BENCHMARK COMPLETE =====");
     println!("Total Time:               {:.2?}", elapsed);
     println!("Time (Ignoring Orphans):  {:.2?}", elapsed_oi);
-    println!("Clients Connected:        {}/{}", metrics.connected.load(Ordering::Relaxed), CONCURRENT_CLIENTS);
-    println!("Games Started:            {}/{}", metrics.games_started.load(Ordering::Relaxed) / 2, CONCURRENT_CLIENTS/2);
+    println!("Clients Connected:        {}/{}", metrics.connected.load(Ordering::Relaxed), concurrent_clients);
+    println!("Games Started:            {}/{}", metrics.games_started.load(Ordering::Relaxed) / 2, concurrent_clients/2);
     println!("Total Server Replies:     {}", metrics.moves_processed.load(Ordering::Relaxed));
     println!("Connection Errors:        {}", metrics.errors.load(Ordering::Relaxed));
     let total_messages = metrics.moves_processed.load(Ordering::Relaxed);
@@ -55,7 +87,7 @@ async fn main() {
     println!("Throughput:               {:.2} messages/sec", rps);
 }
 
-async fn run_simulated_client(_id: usize, metrics: Arc<Metrics>) {
+async fn run_simulated_client(_id: usize, metrics: Arc<Metrics>, timeout_time: u64, moves_per_client: usize) {
     let connect_future = TcpStream::connect("127.0.0.1:8080");
 
     // Timeout the initial connection phase to avoid hanging clients
@@ -72,15 +104,15 @@ async fn run_simulated_client(_id: usize, metrics: Arc<Metrics>) {
     let (reader, mut writer) = stream.split();
     let mut reader = BufReader::new(reader).lines();
 
-    // Timeout the Matchmaking phas
+    // Timeout the Matchmaking phase
     // If they get orphaned in the queue, they will give up and exit.
     let queue_future = reader.next_line();
-    if let Ok(Ok(Some(line))) = timeout(Duration::from_secs(10), queue_future).await {
+    if let Ok(Ok(Some(line))) = timeout(Duration::from_secs(timeout_time), queue_future).await {
         if line.starts_with("s:") {
             metrics.games_started.fetch_add(1, Ordering::Relaxed);
 
             // Spam moves
-            for _ in 0..MOVES_PER_CLIENT {
+            for _ in 0..moves_per_client {
                 if writer.write_all(b"m:12:28\n").await.is_err() {
                     break;
                 }
