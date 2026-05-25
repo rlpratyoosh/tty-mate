@@ -10,9 +10,9 @@ A minimal, terminal-based chess game and multiplayer TCP server written in Rust.
 
 ## Screenshots
 
-|                  Menu                  |                Board                  |
-| :--------------------------------------------: | :--------------------------------------: |
-| ![Landing Page](screenshots/chess-menu.png) | ![Game Menu](screenshots/chess-board.png) |
+|                  Menu                  |                Board                  |                 Multiplayer            |
+| :--------------------------------------------: | :--------------------------------------: | :--------------------------------------: |
+| ![Landing Page](screenshots/chess-menu.png) | ![Game Menu](screenshots/chess-board.png) | ![Multiplayer Game](screenshots/chess-multiplayer.png)  |
 
 ## Features
 
@@ -57,6 +57,14 @@ cargo run --release --bin tty-mate-client
 ```
 
 *Note: Use `j/k/h/l` or arrow keys to navigate the menu and board. Press `Enter` to select/move a piece, and `Esc` to cancel a selection.*
+
+4. Run Benchmark:
+```bash
+cargo run --release --bin bench -- -c 2000 -m 20 -t 10
+```
+
+*Note: `-c` represents concurrent players, `-m` represents moves per second per player, `-t` represents waiting time in queue for each player.*
+
 
 ## Contributing
 
