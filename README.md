@@ -1,33 +1,32 @@
-```text
- _____ _____ ___  _      _     ____ _____ _____
-/__ __Y__ __\\  \//     / \__/|/  _ Y__ __Y  __/
-  / \   / \   \  /_____ | |\/||| / \| / \ |  \  
-  | |   | |   / / \____\| |  ||| |-|| | | |  /_ 
-  \_/   \_/  /_/        \_/  \|\_/ \| \_/ \____\
+                                 _____ _____ ___  _     _     ____ _____ _____                                             
+                                /__ __Y__ __\\  \//     / \__/|/  _ Y__ __Y  __/                                           
+                                  / \   / \   \  /_____ | |\/||| / \| / \ |  \                                             
+                                  | |   | |   / / \____\| |  ||| |-|| | | |  /_                                            
+                                  \_/   \_/  /_/        \_/  \|\_/ \| \_/ \____\                                           
 
-```
+A minimal, terminal-based chess game and multiplayer TCP server written in Rust.
 
-A minimal, terminal-based chess game written in Rust.
-
-**tty-mate** lets you play local two-player chess directly in your terminal. It uses a clean interface built with `ratatui` and focuses on just playing the game without distractions.
+**tty-mate** lets you play chess directly in your terminal. You can play locally or connect to the custom broker server to play against other people over the network. It uses a clean interface built with `ratatui` and focuses entirely on the gameplay.
 
 ## Screenshots
 
-|                  Menu                  |                Board                 |
+|                  Menu                  |                Board                  |
 | :--------------------------------------------: | :--------------------------------------: |
 | ![Landing Page](screenshots/chess-menu.png) | ![Game Menu](screenshots/chess-board.png) |
 
 ## Features
 
-* **Full FIDE Rule Enforcement:** The engine correctly handles standard piece movement, Check, Checkmate, Stalemate, Castling, and En Passant.
 * **Terminal UI:** Split view showing the interactive board and an auto-scrolling move history panel.
+* **Full FIDE Rule Enforcement:** The internal state machine correctly handles standard piece movement, Check, Checkmate, Castling, and En Passant.
+* **Online Multiplayer:** A custom TCP broker server automatically queues and pairs connecting players into real-time matches.
 * **Algebraic Notation:** Automatically records moves in standard chess notation.
 
 ## Current Limitations
 
-While the core game is fully playable, a couple of specific edge cases are still being worked on:
+Since this is an MVP, there are a few hardcoded boundaries and edge cases:
 
-* **Pawn Promotion:** Currently, pawns automatically promote to a Queen when reaching the end of the board. A menu to choose the promotion piece is planned.
+* **Networking:** The server is currently hardcoded to listen on port `8080`, and the client automatically attempts to connect to `127.0.0.1:8080`. Custom IP and port configurations are not yet supported.
+* **Pawn Promotion:** Pawns automatically promote to a Queen when reaching the end of the board. A menu to choose the promotion piece is planned.
 * **Draw by Repetition:** The game does not yet automatically detect a draw if the exact same board state repeats three times.
 
 ## How to Install and Run
@@ -41,20 +40,23 @@ cd tty-mate
 
 ```
 
+2. Start the Multiplayer Server (Optional, required for online play):
 
-2. Run the game:
 ```bash
-cargo run --release
+cargo run --release --bin tty-mate-server
 
 ```
 
+*Note: The server will quietly run in the background listening on port 8080.*
 
+3. Run the Game Client:
+
+```bash
+cargo run --release --bin tty-mate-client
+
+```
 
 *Note: Use `j/k/h/l` or arrow keys to navigate the menu and board. Press `Enter` to select/move a piece, and `Esc` to cancel a selection.*
-
-## Future Roadmap
-
-* **Multiplayer Architecture:** Building out a broker server system to allow playing against friends over the network instead of just local hot-seat play.
 
 ## Contributing
 
